@@ -1,0 +1,10 @@
+fuel_code,fuel_name,ef_co2_g_g,ef_ch4_g_g,ef_n2o_g_g,c_slip_pct,zero_rating_eligible,notes
+HFO,Fuelóleo pesado,3.114,0.00005,0.00018,,false,Combustible fósil estándar
+MGO,Gasóleo marino,3.206,0.00005,0.00018,,false,Combustible fósil destilado
+LNG,Gas Natural Licuado,2.750,0,0.00011,1.7,false,c_slip varía por motor (ver lng_engine_slip.csv)
+Methanol_fossil,Metanol fósil,1.375,,,,false,EF de CH4 y N2O pendientes de medición (PdM)
+HVO,Hydrotreated Vegetable Oil,3.115,0.00005,0.00018,,true,Biocombustible si cumple RED II
+BioLNG,Bio-GNL,2.750,0,0.00011,1.7,true,c_slip igual que LNG fósil
+Electrodiesel,Electrodiésel (RFNBO),3.206,0.00005,0.00018,,true,RFNBO si cumple RED II
+E-Methanol,Electrometanol (RFNBO),1.375,,,,true,RFNBO si cumple RED II
+H2_electrolysis,Hidrógeno por electrólisis,0,0,0,,true,Cero emisiones TtW si pila de combustible

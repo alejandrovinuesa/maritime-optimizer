@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>maritime-optimizer dashboards</title><style>
+:root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;
+--grid:#e1e0d9;--border:rgba(11,11,11,0.10);--good:#0ca30c;--bad:#d03b3b;--warn:#ec835a}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){color-scheme:dark;
+--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--border:rgba(255,255,255,0.10)}}
+:root[data-theme="dark"]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;
+--muted:#898781;--grid:#2c2c2a;--border:rgba(255,255,255,0.10)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 40px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;justify-content:space-between}
+h1{font-size:24px;line-height:1.2;margin:0 0 4px;font-weight:650}
+.sub{color:var(--ink2);margin:0}
+nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+nav a,nav button{font:inherit;font-size:13px;color:var(--ink2);text-decoration:none;padding:4px 10px;
+border:1px solid var(--border);border-radius:999px;background:var(--surface);cursor:pointer}
+nav a[aria-current]{color:var(--ink);font-weight:600;border-color:var(--ink2)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:12px;margin:20px 0}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.tile .label{color:var(--ink2);font-size:12px}
+.tile .value{font-size:22px;font-weight:600;margin-top:2px}
+.tile.hero{grid-column:span 2}
+.tile.hero .value{font-size:34px}
+.tile .note{color:var(--muted);font-size:12px;margin-top:2px}
+.status{display:inline-flex;align-items:center;gap:6px}
+.status i{font-style:normal;width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;
+color:#fff;font-size:12px;font-weight:700}
+.status.good i{background:var(--good)} .status.bad i{background:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-width:0}
+.card.wide{grid-column:1/-1}
+.card .plotly-graph-div{width:100%!important;max-width:100%}
+.card h2{font-size:15px;margin:0 0 2px;font-weight:600}
+.card p.cap{color:var(--ink2);margin:0 0 8px;font-size:13px}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--ink2);font-size:12px}
+table{border-collapse:collapse;width:100%;margin-top:6px;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--grid)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink2);font-weight:600}
+.tablewrap{overflow-x:auto}
+footer{margin-top:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--grid);padding-top:12px}
+footer a{color:var(--ink2)}
+
+a.tile{color:inherit;text-decoration:none} a.tile:hover{border-color:var(--ink2)}</style></head>
+<body><div class="wrap"><h1>maritime-optimizer · example dashboards</h1>
+<p class="sub">Route, speed and fuel optimization under the EU ETS, FuelEU Maritime and MARPOL Annex VI.
+Five scenarios with a generic example fleet.</p>
+<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))"><a class="tile" href="e1.html"><div class="label">E1</div><div class="value" style="font-size:17px">Valencia → Rotterdam</div><div class="note">Intra-EU voyage · 100 % EU ETS coverage · Panamax bulk carrier on HFO</div></a><a class="tile" href="e2.html"><div class="label">E2</div><div class="value" style="font-size:17px">Rotterdam → New York</div><div class="note">Extra-EU voyage · 50 % EU ETS coverage · Neopanamax container ship on MGO</div></a><a class="tile" href="e3.html"><div class="label">E3</div><div class="value" style="font-size:17px">Marseille → Singapore: fuel choice</div><div class="note">Same voyage with HFO, MGO, LNG and BioLNG · Aframax dual-fuel tanker</div></a><a class="tile" href="e4.html"><div class="label">E4</div><div class="value" style="font-size:17px">Hamburg → Houston: carbon price</div><div class="note">EUA price from 40 to 150 EUR/t · Neopanamax container ship on MGO</div></a><a class="tile" href="e5.html"><div class="label">E5</div><div class="value" style="font-size:17px">Singapore → Rotterdam: Suez or the Cape?</div><div class="note">Two corridors optimized separately · LR2 dual-fuel tanker on LNG</div></a></div>
+<footer><p><strong>Data notice.</strong> Research and decision-support tool. Regulatory parameters come from Delegated Regulation (EU) 2023/2776, Regulation (EU) 2023/1805 (FuelEU Maritime), Directive 2003/87/EC as amended by Directive (EU) 2023/959, IMO resolutions MEPC.338(76), MEPC.353(78) and MEPC.354(78) and MARPOL Annex VI, in their version in force in 2026, and may change. Vessels are generic examples; MCR, SFOC, time-charter rates, fuel and EUA prices and canal tolls are illustrative estimates, not market quotes. Calm-water physics. Results do not replace official MRV, FuelEU or CII verification and are not legal or commercial advice.</p>
+<p><a href="https://github.com/alexvinuesa22-debug/maritime-optimizer">Source code on GitHub</a></p></footer>
+</div></body></html>

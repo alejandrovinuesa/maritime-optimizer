@@ -1,0 +1,5 @@
+vessel_type,d1_A_threshold,d2_B_threshold,d3_C_threshold,d4_D_threshold,notes
+bulk_carrier,0.86,0.94,1.06,1.18,A: <=d1*req; B: <=d2; C: <=d3; D: <=d4; E: >d4
+tanker,0.82,0.93,1.08,1.28,Vectores específicos para tankers
+container,0.83,0.94,1.07,1.19,Vectores específicos para contenedores
+general_cargo,0.83,0.94,1.06,1.19,Vectores específicos para carga general

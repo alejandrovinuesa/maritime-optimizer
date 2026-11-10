@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "maritime-optimizer: regulation-aware maritime route, speed and fuel optimization"
+type: software
+version: 0.1.0
+license: MIT
+authors:
+  - family-names: "Vinuesa Cano"
+    given-names: "Alejandro"
+keywords:
+  - maritime shipping
+  - EU ETS
+  - FuelEU Maritime
+  - CII
+  - ISO 14083
+  - route optimization
+references:
+  - type: thesis
+    title: "Estrategia de optimización de las emisiones de CO2 en cumplimiento de la regulación para una naviera"
+    authors:
+      - family-names: "Vinuesa Cano"
+        given-names: "Alejandro"
+    institution:
+      name: "Universidad Carlos III de Madrid"
+    thesis-type: "Bachelor's thesis (Trabajo de Fin de Grado)"
+    year: 2026

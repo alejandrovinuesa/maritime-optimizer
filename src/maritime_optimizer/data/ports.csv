@@ -1,0 +1,24 @@
+code,name,country,lat,lon,is_eu_eea,is_tent_t
+ESALG,Algeciras,Spain,36.127,-5.443,true,true
+ESBCN,Barcelona,Spain,41.347,2.168,true,true
+ESVLC,Valencia,Spain,39.450,-0.325,true,true
+NLRTM,Rotterdam,Netherlands,51.905,4.500,true,true
+DEHAM,Hamburg,Germany,53.541,9.984,true,true
+BEANR,Antwerp,Belgium,51.261,4.410,true,true
+FRLEH,Le Havre,France,49.480,0.107,true,true
+ITGOA,Genoa,Italy,44.407,8.934,true,true
+GRPIR,Piraeus,Greece,37.942,23.646,true,true
+PTLIS,Lisbon,Portugal,38.708,-9.139,true,false
+SEMMA,Malmö,Sweden,55.613,13.002,true,false
+NOSVG,Stavanger,Norway,58.970,5.733,true,false
+GBSOU,Southampton,United Kingdom,50.891,-1.404,false,false
+MAPTM,Tanger Med,Morocco,35.887,-5.504,false,false
+TRIST,Istanbul,Türkiye,41.005,28.978,false,false
+EGPSD,Port Said,Egypt,31.259,32.302,false,false
+CNSHA,Shanghai,China,31.230,121.474,false,false
+SGSIN,Singapore,Singapore,1.264,103.820,false,false
+USNYC,New York,United States,40.689,-74.045,false,false
+BRSSZ,Santos,Brazil,-23.953,-46.299,false,false
+AEJEA,Jebel Ali,United Arab Emirates,25.004,55.064,false,false
+FRMRS,Marseille,France,43.300,5.370,true,true
+USHOU,Houston,United States,29.720,-95.020,false,false

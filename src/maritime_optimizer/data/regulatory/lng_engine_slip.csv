@@ -1,0 +1,5 @@
+engine_type,engine_description,c_slip_pct,notes
+Otto_VM_dual,Motor Otto velocidad media combustible dual,3.1,Mayor fuga de metano (CH4 slip)
+Otto_VB_dual,Motor Otto velocidad baja combustible dual,1.7,Default usado en config.py
+Diesel_VB_dual,Motor Diésel velocidad baja combustible dual,0.2,Menor fuga (mejor opción para LNG)
+LBSI,Lean Burn Spark Ignition (chispa gas mezcla pobre),2.6,Motor de chispa de gas

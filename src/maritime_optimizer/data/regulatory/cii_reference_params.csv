@@ -1,0 +1,5 @@
+vessel_type,a_coefficient,c_exponent,notes
+bulk_carrier,4745.3,0.622,Bulk carrier - parámetros referencia G2
+tanker,5247.2,0.610,Tanker - parámetros referencia G2
+container,1984.0,0.489,Container ship - parámetros referencia G2
+general_cargo,588.0,0.3885,General cargo - parámetros referencia G2

@@ -1,0 +1,7 @@
+name,vessel_type,gt,dwt,design_speed,mcr,sfoc_base,fuel_type,ice_class,tce_eur_day
+panamax_bulker,bulk_carrier,43500,79500,14.0,9800,175.0,HFO,,13600
+neopanamax_container,container,89500,100000,22.0,42000,170.0,MGO,,46000
+aframax_lng_tanker,tanker,62000,114000,15.0,22000,155.0,LNG,,30500
+iceclass_bulker,bulk_carrier,43000,75600,14.0,9200,180.0,HFO,IA,15600
+mpv_general_cargo,general_cargo,8600,12200,13.0,5500,185.0,MGO,,10200
+lr2_lng_tanker,tanker,64000,110000,15.0,12000,160.0,LNG,,32500

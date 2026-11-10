@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Local tool output
+graphify-out/
+.claude/
+
+# Copyrighted standards and third-party documents must never be committed
+*.pdf
+
+# Cartography and caches live in the user data dir, but ignore them if copied here
+geodata/
+cache/
+
+# Secrets: API keys must never be committed (each user brings their own key)
+.env
+*.env
+.env.*
+*.key
+.streamlit/secrets.toml

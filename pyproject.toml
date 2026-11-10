@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maritime-optimizer"
+version = "0.1.0"
+description = "Regulation-aware maritime route, speed and fuel optimization (EU ETS, FuelEU Maritime, MARPOL Annex VI CII, ISO 14083)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Alejandro Vinuesa Cano" }]
+keywords = ["maritime", "shipping", "emissions", "eu-ets", "fueleu", "cii", "iso-14083", "optimization", "routing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "networkx>=3.0",
+    "geopandas>=0.14",
+    "shapely>=2.0",
+]
+
+[project.optional-dependencies]
+viz = ["plotly>=5.19"]
+app = ["plotly>=5.19", "streamlit>=1.30"]
+agents = ["anthropic>=2.8", "mcp>=2.3", "pydantic>=2", "plotly>=5.19"]
+dev = ["pytest>=8", "ruff>=0.5", "plotly>=5.19", "anthropic>=2.8", "mcp>=2.3", "pydantic>=2"]
+
+[project.scripts]
+maritime-opt = "maritime_optimizer.cli:main"
+maritime-opt-mcp = "maritime_optimizer.agents.mcp_server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+maritime_optimizer = ["data/*.csv", "data/regulatory/*.csv", "data/regulatory/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+# Spanish math notation in identifiers/comments (φ, Δ) and compact lambdas are intentional.
+ignore = ["E731", "E701", "E741", "B023"]
+
+[tool.ruff.lint.per-file-ignores]
+# Embedded CSS, JavaScript and HTML templates.
+"src/maritime_optimizer/viz/dashboard.py" = ["E501"]
+"src/maritime_optimizer/agents/report.py" = ["E501"]

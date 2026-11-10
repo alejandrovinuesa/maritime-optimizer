@@ -1,0 +1,14 @@
+fuel_code,engine_type,lcv_mj_g,wtt_co2eq_g_mj,cf_co2_g_g,cf_ch4_g_g,cf_n2o_g_g,c_slip_pct,lifecycle_e_g_mj,notes
+HFO,MCI,0.0405,13.5,3.114,0.00005,0.00018,,,Motor combustión interna
+MGO,MCI,0.0427,14.4,3.206,0.00005,0.00018,,,Motor combustión interna
+LNG,Otto_VM_dual,0.0491,18.5,2.750,0,0.00011,3.1,,Otto velocidad media dual
+LNG,Otto_VB_dual,0.0491,18.5,2.750,0,0.00011,1.7,,Otto velocidad baja dual
+LNG,Diesel_VB_dual,0.0491,18.5,2.750,0,0.00011,0.2,,Diésel velocidad baja dual
+LNG,LBSI,0.0491,18.5,2.750,0,0.00011,2.6,,Lean Burn Spark Ignition
+Methanol_fossil,MCI,0.0199,31.3,1.375,,,,,EF de CH4 y N2O pendientes de medición
+H2_natural_gas,Pila_combustible,0.12,132,0,0,0,,,Hidrógeno desde gas natural
+HVO,MCI,0.044,E_minus_Cf_LCV,3.115,0.00005,0.00018,,32.9,"E por defecto = umbral RED II (ahorro 65 % vs 94 gCO2e/MJ, art. 29.10 y Anexo V); sustituir por el E del certificado del lote"
+BioLNG,Otto_VM_dual,0.05,E_minus_Cf_LCV,2.750,0,0.00011,3.1,32.9,"E por defecto = umbral RED II (ahorro 65 % vs 94 gCO2e/MJ, art. 29.10 y Anexo V); sustituir por el E del certificado del lote"
+Electrodiesel,MCI,0.0427,E_minus_Cf_LCV,3.206,0.00005,0.00018,,28.2,"RFNBO: E por defecto = umbral RED II (ahorro 70 % vs 94 gCO2e/MJ, art. 25.2); sustituir por el valor certificado"
+E-Methanol,MCI,0.0199,E_minus_Cf_LCV,1.375,,,,28.2,"RFNBO: E por defecto = umbral RED II (ahorro 70 % vs 94 gCO2e/MJ, art. 25.2); sustituir por el valor certificado"
+H2_electrolysis,Pila_combustible,0.12,E_minus_Cf_LCV,0,0,0,,28.2,"RFNBO: E por defecto = umbral RED II (ahorro 70 % vs 94 gCO2e/MJ, art. 25.2); sustituir por el valor certificado"

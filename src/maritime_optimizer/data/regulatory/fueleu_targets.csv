@@ -1,0 +1,7 @@
+period_start,period_end,reduction_pct,ghgi_max_g_co2eq_mj,notes
+2025,2029,2.0,89.34,Período inicial - reducción suave
+2030,2034,6.0,85.69,Aumento moderado
+2035,2039,14.5,77.94,Aceleración hacia descarbonización
+2040,2044,31.0,62.90,Reducción significativa
+2045,2049,62.0,34.64,Mayoritariamente combustibles renovables
+2050,9999,80.0,18.23,Net-zero objetivo OMI 2050
