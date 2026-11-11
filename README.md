@@ -22,7 +22,9 @@ Since 2024 shipping emissions have a price in Europe. Every decision about **whi
 
 Every regulatory number lives in a CSV that cites its legal source, so the model can be audited, and updated, without touching code.
 
-[![Suez vs Cape of Good Hope dashboard](docs/img/dashboard_e5.png)](https://alexvinuesa22-debug.github.io/maritime-optimizer/e5.html)
+[![Interactive app: Valencia to Singapore, Suez vs Cape of Good Hope](docs/img/app.png)](#interactive-app)
+
+**Interactive app:** pick two ports, a deadline and a vessel and get the optimized voyage on a map; ask Claude for a compliance report or questions with your own API key ([details](#interactive-app)).
 
 **Live dashboards:** [E1](https://alexvinuesa22-debug.github.io/maritime-optimizer/e1.html) · [E2](https://alexvinuesa22-debug.github.io/maritime-optimizer/e2.html) · [E3](https://alexvinuesa22-debug.github.io/maritime-optimizer/e3.html) · [E4](https://alexvinuesa22-debug.github.io/maritime-optimizer/e4.html) · [E5](https://alexvinuesa22-debug.github.io/maritime-optimizer/e5.html)
 
@@ -78,11 +80,28 @@ pip install -e ".[app]"
 streamlit run app/streamlit_app.py             # interactive app: ports, deadline, vessel → optimized voyage on a map
 ```
 
+[![Suez vs Cape of Good Hope dashboard](docs/img/dashboard_e5.png)](https://alexvinuesa22-debug.github.io/maritime-optimizer/e5.html)
+
 Each HTML dashboard has KPI tiles (cost, speed, CO₂, CII rating, FuelEU status, ISO 14083 intensity), the route map, the cost breakdown and scenario-specific charts. Every chart has hover tooltips and a data table, light and dark mode follow the system setting, and the data notice is printed in the footer. Pre-built copies live in [`examples/dashboards/`](examples/dashboards/) and are published on GitHub Pages by [`pages.yml`](.github/workflows/pages.yml).
 
 | | |
 |---|---|
 | [![E3](docs/img/dashboard_e3.png)](https://alexvinuesa22-debug.github.io/maritime-optimizer/e3.html) **E3** fuel choice | [![E4](docs/img/dashboard_e4.png)](https://alexvinuesa22-debug.github.io/maritime-optimizer/e4.html) **E4** carbon price |
+
+## Interactive app
+
+```bash
+pip install -e ".[app,agents]"
+streamlit run app/streamlit_app.py
+```
+
+Choose origin, destination, maximum transit time, vessel and fuel; the market, contract and regulatory inputs (EUA price, time-charter rate, cargo, year, EEXI speed cap, FuelEU penalty) sit in a collapsible panel. The **Voyage** tab shows KPI cards, the port and canal itinerary with distance and speed per stretch, the route map, the cost breakdown and CO₂ by stretch; turn on the Suez vs Cape comparison to optimize both corridors. When a voyage in FuelEU scope runs a deficit, one line gives the estimated Annex IV penalty attributable to it, priced into the cost or not, and notes that pooling, banking and borrowing are not modelled and could avoid it.
+
+**AI report** and **Ask the agent** need an Anthropic API key, typed by each user in the sidebar and billed to their own account. The key stays in the browser session's memory and is never written to disk, logged or put in a URL; every call shows its token count and approximate cost. A server-side `ANTHROPIC_API_KEY` is **ignored** unless `MARITIME_OPT_ALLOW_SERVER_KEY=1` is set, so a public deployment never spends the deployer's credit on visitors. Only type your key into an instance you trust, or run the app locally.
+
+Scenarios can be shared as links: `?origin=ESVLC&destination=SGSIN&compare=1` (also `vessel`, `fuel` and `hours`) presets the inputs.
+
+**Deploy your own copy** on [Streamlit Community Cloud](https://streamlit.io/cloud) (free): fork the repository, choose *Create app*, select the fork, branch `main` and main file `app/streamlit_app.py`. [`requirements.txt`](requirements.txt) installs the package with its extras and [`.streamlit/config.toml`](.streamlit/config.toml) sets the theme. Do not add an API key to the app's secrets: visitors bring their own.
 
 ## Agents (Claude)
 
@@ -124,7 +143,7 @@ maritime-opt regulatory-update amendment.txt --out-dir proposal/
 
 The agents use `claude-opus-5-5` with server-side refusal fallbacks enabled (`fallbacks="default"`), so a declined request is retried on a fallback model inside the same call. **Bring your own key.** The project ships no API key and never calls Claude on anyone's behalf: `ask`, `report` and `regulatory-update` use the credentials of whoever runs them and are billed to that account. Everything else (optimizer, CLI, MCP server, dashboards, tests) makes no model calls and costs nothing.
 
-**Streamlit app with your own key.** `pip install -e ".[app,agents]"` then `streamlit run app/streamlit_app.py`. Pick two ports, a maximum transit time and a vessel to get the optimized voyage on a map, with costs, emissions and compliance. When a voyage in FuelEU scope runs a deficit, the app shows the estimated Annex IV penalty attributable to it (whether or not it is priced into the cost) and notes that pooling, banking and borrowing are not modelled and could avoid it. Paste your Anthropic API key in the sidebar to unlock two more tabs: **AI report** (one request; the compliance narrative with its automatic figure check, downloadable as HTML) and **Ask the agent** (a chat that knows the voyage on screen, keeps the conversation and calls the optimizer tools). The key stays in the browser session's memory, is never written to disk, logged or put in a URL, and the token count and approximate cost of every call are shown. A server-side `ANTHROPIC_API_KEY` is **ignored** unless `MARITIME_OPT_ALLOW_SERVER_KEY=1` is set, so a public deployment never spends the deployer's credit on visitors; set it only on your own machine. Only type your key into an instance you trust, or run the app locally.
+**Streamlit app with your own key:** the report and the chat are also available in the [interactive app](#interactive-app), with the same bring-your-own-key policy.
 
 ## The model
 
@@ -198,7 +217,7 @@ Run them with `maritime-opt scenario all`.
 
 ## Validation
 
-`pytest` runs 73 tests: arithmetic identities of the fuel, CII and ETS formulas; biofuel zero-rating; ISO 14083 properties; route symmetry; monotonicity in the carbon price; k-shortest paths under a deadline; analytic speed vs golden-section search; A* vs Dijkstra; the CII retry; the FuelEU penalty, annual CII and pooling; per-leg resistance and its KKT deadline solution; that no edge crosses land beyond the tolerance; geographic sanity checks on known distances; cache consistency; that every fuel has an explicit calorific value and well-to-tank factor; the dashboards and the Streamlit app, including that it only spends the key the user types in; the MCP server and the three agents against a fake Claude client (no network); and a numerical regression of the five scenarios. These are **internal consistency checks**, not a validation against measured fleet consumption.
+`pytest` runs 74 tests: arithmetic identities of the fuel, CII and ETS formulas; biofuel zero-rating; ISO 14083 properties; route symmetry; monotonicity in the carbon price; k-shortest paths under a deadline; analytic speed vs golden-section search; A* vs Dijkstra; the CII retry; the FuelEU penalty, annual CII and pooling; per-leg resistance and its KKT deadline solution; that no edge crosses land beyond the tolerance; geographic sanity checks on known distances; cache consistency; that every fuel has an explicit calorific value and well-to-tank factor; the dashboards and the Streamlit app, including that it only spends the key the user types in; the MCP server and the three agents against a fake Claude client (no network); and a numerical regression of the five scenarios. These are **internal consistency checks**, not a validation against measured fleet consumption.
 
 ## Data and disclaimer
 

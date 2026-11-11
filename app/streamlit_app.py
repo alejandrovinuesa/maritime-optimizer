@@ -234,8 +234,18 @@ fleet = load_vessels_from_csv()
 ports = {p.code: p for p in load_ports_from_csv().values()}
 port_label = {code: f"{p.name} ({code})" for code, p in sorted(ports.items(), key=lambda kv: kv[1].name)}
 codes = list(port_label)
-st.session_state.setdefault("origin", "ESVLC")
-st.session_state.setdefault("destination", "NLRTM")
+# Shareable scenarios: ?origin=ESVLC&destination=SGSIN&vessel=panamax_bulker&fuel=LNG&hours=2000&compare=1
+# preset the inputs on the first run of a session (invalid values fall back to the defaults).
+QUERY = st.query_params
+
+
+def preset(name: str, valid, default):
+    value = QUERY.get(name)
+    return value if value in valid else default
+
+
+st.session_state.setdefault("origin", preset("origin", codes, "ESVLC"))
+st.session_state.setdefault("destination", preset("destination", codes, "NLRTM"))
 
 
 def swap_ports() -> None:
@@ -256,13 +266,16 @@ with st.sidebar:
     destination = st.selectbox("Destination", codes, key="destination", format_func=port_label.get)
     st.button("Swap origin and destination", icon=":material/swap_vert:", on_click=swap_ports,
               width="stretch")
-    tmax = st.number_input("Maximum transit time (h)", 24, 5_000, 1_500, 24)
+    hours = QUERY.get("hours", "")
+    tmax = st.number_input("Maximum transit time (h)", 24, 5_000,
+                           int(hours) if hours.isdigit() and 24 <= int(hours) <= 5_000 else 1_500, 24)
     side_section("Vessel")
-    vessel_name = st.selectbox("Vessel", list(fleet), index=0)
+    vessels = list(fleet)
+    vessel_name = st.selectbox("Vessel", vessels, index=vessels.index(preset("vessel", vessels, vessels[0])))
     vessel = fleet[vessel_name]
     fuels = ["HFO", "MGO", "LNG", "BioLNG", "HVO", "E-Methanol"]
-    fuel = st.selectbox("Fuel", fuels, index=fuels.index(vessel.fuel_type.value))
-    corridors = st.toggle("Compare Suez vs Cape of Good Hope", value=False)
+    fuel = st.selectbox("Fuel", fuels, index=fuels.index(preset("fuel", fuels, vessel.fuel_type.value)))
+    corridors = st.toggle("Compare Suez vs Cape of Good Hope", value=QUERY.get("compare") == "1")
     with st.expander("Market, contract and regulation", icon=":material/tune:"):
         eua = st.slider("EUA price (EUR/t CO₂e)", 0, 200, 65, 5)
         tce = st.number_input("Time charter equivalent (EUR/day)", 1_000, 200_000,
@@ -351,12 +364,12 @@ with tab_voyage:
     in_scope = fueleu_in_scope(best)
     gap = best.fueleu_intensity - best.fueleu_max_allowed
     if in_scope:
-        cols[5].metric("FuelEU 2026+", "✓ compliant" if best.fueleu_compliant else "! deficit",
+        cols[5].metric("FuelEU", "✓ compliant" if best.fueleu_compliant else "! deficit",
                        f"{gap:+.2f} g/MJ", delta_color="inverse", icon=":material/local_gas_station:",
-                       help="Well-to-wake GHG intensity minus the FuelEU limit for the year, in "
+                       help="Well-to-wake GHG intensity minus the FuelEU limit for the selected year, in "
                             "gCO₂e/MJ (positive = above the limit).", **kpi)
     else:
-        cols[5].metric("FuelEU 2026+", "n/a", "outside EU scope", delta_color="off", delta_arrow="off",
+        cols[5].metric("FuelEU", "n/a", "outside EU scope", delta_color="off", delta_arrow="off",
                        icon=":material/local_gas_station:",
                        help="FuelEU Maritime applies only to voyages with an EU/EEA port.", **kpi)
     if corridors and len(routes) == 2:

@@ -90,5 +90,18 @@ def test_fueleu_deficit_note_and_out_of_scope_voyage(graph, monkeypatch):
     note = texts(at.warning)
     assert "estimated penalty" in note and "Pooling, banking and borrowing" in note
     at = run_app(origin="AEJEA", destination="BRSSZ")  # no EU port: FuelEU does not apply
-    fueleu = next(m for m in at.metric if m.label == "FuelEU 2026+")
+    fueleu = next(m for m in at.metric if m.label == "FuelEU")
     assert fueleu.value == "n/a" and "estimated penalty" not in texts(at.warning)
+
+
+def test_query_params_preset_the_scenario(graph):
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.query_params.update(origin="ESVLC", destination="SGSIN", compare="1", hours="2500",
+                           fuel="LNG", vessel="not-a-vessel")
+    at.run()
+    assert not at.exception
+    hero = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-hero"'))
+    assert "Singapore" in hero and "LNG" in hero and "2,500 h" in hero
+    assert at.sidebar.toggle[0].value is True                     # Suez vs Cape comparison on
+    assert at.sidebar.selectbox[2].value == at.sidebar.selectbox[2].options[0]   # invalid → default
+

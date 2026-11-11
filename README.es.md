@@ -34,7 +34,9 @@ maritime-opt route SGSIN NLRTM --vessel lr2_lng_tanker --tmax 1500 --avoid SUEZ
 maritime-opt scenario E3          # comparativa HFO / MGO / LNG / BioLNG
 ```
 
-Con `--json` la salida se obtiene en formato JSON. `maritime-opt dashboard all` genera los cinco paneles HTML y `streamlit run app/streamlit_app.py` abre la aplicación interactiva: eliges dos puertos, el tiempo máximo y un buque y obtienes el viaje optimizado sobre un mapa. Con tu propia clave de Anthropic (`pip install -e ".[app,agents]"`) se activan el informe con IA y un chat con el agente; la clave solo vive en la sesión del navegador y una clave del servidor se ignora salvo que se active `MARITIME_OPT_ALLOW_SERVER_KEY=1`. Los paneles también están [publicados en línea](https://alexvinuesa22-debug.github.io/maritime-optimizer/). El uso desde Python se describe en el [README en inglés](README.md#quick-start).
+[![Aplicación interactiva: Valencia a Singapur, Suez frente al Cabo](docs/img/app.png)](README.md#interactive-app)
+
+Con `--json` la salida se obtiene en formato JSON. `maritime-opt dashboard all` genera los cinco paneles HTML y `streamlit run app/streamlit_app.py` abre la aplicación interactiva: eliges dos puertos, el tiempo máximo y un buque y obtienes el viaje optimizado sobre un mapa. Con tu propia clave de Anthropic (`pip install -e ".[app,agents]"`) se activan el informe con IA y un chat con el agente; la clave solo vive en la sesión del navegador y una clave del servidor se ignora salvo que se active `MARITIME_OPT_ALLOW_SERVER_KEY=1`. Un escenario se puede compartir como enlace (`?origin=ESVLC&destination=SGSIN&compare=1`) y la app se puede desplegar gratis en Streamlit Community Cloud ([instrucciones](README.md#interactive-app)). Los paneles también están [publicados en línea](https://alexvinuesa22-debug.github.io/maritime-optimizer/). El uso desde Python se describe en el [README en inglés](README.md#quick-start).
 
 ## Agentes (Claude)
 
