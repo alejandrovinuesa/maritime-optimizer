@@ -46,7 +46,8 @@ def optimize_route(origin: str, destination: str, vessel: str, eua_price: float 
                    fuel: Optional[str] = None, year: int = 2026, cargo_tons: Optional[float] = None,
                    max_transit_hours: float = 1500.0, avoid: Optional[List[str]] = None,
                    time_charter_eur_day: Optional[float] = None,
-                   include_fueleu_penalty: bool = False) -> dict:
+                   include_fueleu_penalty: bool = False,
+                   epl_max_speed_knots: Optional[float] = None) -> dict:
     """Optimize one voyage: cheapest feasible route and speed with its costs (fuel, EU ETS,
     time charter, tolls), emissions, CII rating, FuelEU status and ISO 14083 intensity.
 
@@ -62,9 +63,11 @@ def optimize_route(origin: str, destination: str, vessel: str, eua_price: float 
         avoid: Graph nodes to exclude, e.g. ["SUEZ"] to force the Cape route.
         time_charter_eur_day: Override the vessel's time-charter equivalent rate.
         include_fueleu_penalty: Price the FuelEU deficit (Annex IV penalty) into the optimum.
+        epl_max_speed_knots: EEXI engine power limitation expressed as a maximum speed (knots).
     """
     return tools.optimize_route(origin, destination, vessel, eua_price, fuel, year, cargo_tons,
-                                max_transit_hours, avoid, time_charter_eur_day, include_fueleu_penalty)
+                                max_transit_hours, avoid, time_charter_eur_day, include_fueleu_penalty,
+                                epl_max_speed_knots)
 
 
 @server.tool(annotations=READ_ONLY)

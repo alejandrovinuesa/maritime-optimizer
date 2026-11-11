@@ -60,7 +60,8 @@ def list_vessels() -> str:
 @beta_tool
 def optimize_route(origin: str, destination: str, vessel: str, eua_price: float = 65.0,
                    fuel: Optional[str] = None, year: int = 2026, max_transit_hours: float = 1500.0,
-                   avoid: Optional[List[str]] = None, include_fueleu_penalty: bool = False) -> str:
+                   avoid: Optional[List[str]] = None, include_fueleu_penalty: bool = False,
+                   epl_max_speed_knots: Optional[float] = None) -> str:
     """Optimize one voyage: cheapest feasible route and speed with costs, emissions, CII rating,
     FuelEU status and ISO 14083 intensity.
 
@@ -74,10 +75,12 @@ def optimize_route(origin: str, destination: str, vessel: str, eua_price: float 
         max_transit_hours: Contractual maximum transit time in hours.
         avoid: Graph nodes to exclude, e.g. ["SUEZ"].
         include_fueleu_penalty: Price the FuelEU deficit (Annex IV penalty) into the optimum.
+        epl_max_speed_knots: EEXI engine power limitation expressed as a maximum speed (knots).
     """
     return _call(tools.optimize_route, origin=origin, destination=destination, vessel=vessel,
                  eua_price=eua_price, fuel=fuel, year=year, max_transit_hours=max_transit_hours,
-                 avoid=avoid, include_fueleu_penalty=include_fueleu_penalty)
+                 avoid=avoid, include_fueleu_penalty=include_fueleu_penalty,
+                 epl_max_speed_knots=epl_max_speed_knots)
 
 
 @beta_tool

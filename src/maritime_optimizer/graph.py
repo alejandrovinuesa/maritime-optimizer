@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import networkx as nx
 
-from . import models, routing
 from .paths import CACHE_DIR, PACKAGE_DATA_DIR
 from .models import Port, Vessel, VesselType, FuelType, VoyageGeoType
 from .routing import (
@@ -80,7 +79,10 @@ class MaritimeGraph:
         h.update(f"v{_GRAPH_CACHE_VERSION}|{max_distance_nm}|{sys.version_info[:2]}|"
                  f"nx{nx.__version__}|geo{HAS_GEOPANDAS}".encode())
         # Código que construye el grafo (waypoints, tolerancias, peajes, dataclasses).
-        for module_file in (routing.__file__, __file__, models.__file__):
+        # Sibling source files by path: importing the modules as package attributes
+        # (`from . import models`) would go through __init__.py and create an import cycle.
+        here = Path(__file__).parent
+        for module_file in (here / "routing.py", Path(__file__), here / "models.py"):
             h.update(Path(module_file).read_bytes())
         for code in sorted(self.ports):
             h.update(repr(self.ports[code]).encode())

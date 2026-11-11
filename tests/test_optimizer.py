@@ -116,3 +116,28 @@ def test_astar_matches_dijkstra(graph, panamax, monkeypatch, origin, destination
                         lambda G, s, t, heuristic, weight: nx.dijkstra_path(G, s, t, weight=weight))
     with_dijkstra = optimize_voyage(graph, req)
     assert with_astar.total_cost_eur == pytest.approx(with_dijkstra.total_cost_eur, rel=1e-12)
+
+
+def test_eexi_engine_power_limitation_caps_speed(graph, container):
+    """EEXI (MARPOL Annex VI reg. 23): the EPL speed cap binds only when the optimum is above it."""
+    from dataclasses import replace
+    base = replace(_nyc(container, 2400), time_charter_rate=60_000)   # optimum well above v_min
+    free = optimize_voyage(graph, base)
+    v_free = free.legs[0].speed_knots
+    assert v_free - 1.0 > base.min_speed_knots
+    capped = optimize_voyage(graph, replace(base, epl_max_speed_knots=v_free - 1.0))
+    assert max(leg.speed_knots for leg in capped.legs) <= v_free - 1.0 + 1e-9
+    assert capped.eexi_binding and capped.total_cost_eur > free.total_cost_eur
+    loose = optimize_voyage(graph, replace(base, epl_max_speed_knots=v_free + 3.0))
+    assert not loose.eexi_binding and loose.total_cost_eur == pytest.approx(free.total_cost_eur)
+    assert not free.eexi_binding and free.epl_max_speed_knots is None
+
+
+def test_epl_power_fraction_and_validation(container):
+    # Power ∝ v³ in this model, so 75 % of MCR caps speed at v_d · 0.75^(1/3).
+    assert container.epl_speed_knots(0.75) == pytest.approx(22.0 * 0.75 ** (1 / 3))
+    with pytest.raises(ValueError):
+        container.epl_speed_knots(1.5)
+    with pytest.raises(ValueError):
+        OptimizationRequest(vessel=container, origin_port="NLRTM", destination_port="USNYC",
+                            min_speed_knots=8.0, epl_max_speed_knots=7.0)

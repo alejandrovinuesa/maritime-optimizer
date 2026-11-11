@@ -137,7 +137,7 @@ over the route $R$, the speed $v$ and the fuel $f$, subject to:
 | Constraint | Source | How it is applied |
 |---|---|---|
 | EU ETS geographic coverage (100 % intra-EU, 50 % extra-EU) | Directive 2003/87/EC as amended by Directive (EU) 2023/959 | Cost factor α_geo |
-| Maximum speed (EEXI / engine power limitation) | MARPOL Annex VI, reg. 23 | Upper speed bound |
+| Maximum speed (EEXI / engine power limitation) | MARPOL Annex VI, reg. 23 | Speed cap `epl_max_speed_knots` (CLI `--epl-max-speed`; `Vessel.epl_speed_knots(f)` converts an EPL power fraction); reported as binding or not. Without an EPL, the design speed |
 | Operational carbon intensity, rating ≥ C | MARPOL Annex VI, reg. 28; MEPC.338(76), .353(78), .354(78) | Post-optimization check; retries with v_max × 0.9 / 0.8 / 0.7 |
 | Well-to-wake GHG intensity limit | Regulation (EU) 2023/1805 (FuelEU Maritime), art. 4 and Annex IV | Checked and reported; optionally priced into Z as the Annex IV penalty (`include_fueleu_penalty=True`) |
 | Maximum transit time | Commercial contract | Hard constraint |

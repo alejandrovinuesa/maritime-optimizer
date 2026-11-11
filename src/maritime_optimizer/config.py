@@ -101,6 +101,10 @@ LNG_ENGINE_SLIP: Dict[str, float] = _load_lng_engine_slip()
 FUELEU_PENALTY_EUR_PER_T_VLSFO = 2400.0
 VLSFO_ENERGY_MJ_PER_T = 41_000.0
 
+# EU ETS phase-in (Directive 2003/87/EC art. 3gb as amended by 2023/959): shipping surrenders
+# allowances for 40 % of 2024 emissions and 70 % of 2025 emissions, 100 % from 2026. The tool
+# models voyages from 2026 on, so the coverage factor is always 1.00 and the phase-in is not
+# modelled (see data/regulatory/README.md).
 GEO_FACTOR_INTRA_EU = 1.0
 GEO_FACTOR_EXTRA_EU = 0.5
 GEO_FACTOR_PORT_EU = 1.0

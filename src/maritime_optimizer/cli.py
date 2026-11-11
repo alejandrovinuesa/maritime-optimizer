@@ -76,7 +76,8 @@ def cmd_route(args) -> int:
                   year=args.year, eua_price=args.eua, cargo_tons=args.cargo,
                   max_transit_hours=args.tmax, speed_method=args.speed_method,
                   include_fueleu_penalty=args.fueleu_penalty,
-                  fueleu_consecutive_deficit_years=args.deficit_years)
+                  fueleu_consecutive_deficit_years=args.deficit_years,
+                  epl_max_speed_knots=args.epl_max_speed)
     if args.tce is not None:
         kwargs["time_charter_rate"] = args.tce
     graph = _graph()
@@ -288,6 +289,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--speed-method", choices=["analytic", "golden"], default="analytic")
     r.add_argument("--fueleu-penalty", action="store_true",
                    help="price the FuelEU deficit (Annex IV penalty) into the objective")
+    r.add_argument("--epl-max-speed", type=float,
+                   help="EEXI engine power limitation as a maximum speed, kn (default: none)")
     r.add_argument("--deficit-years", type=int, default=1,
                    help="consecutive FuelEU deficit periods, for the penalty multiplier")
     r.add_argument("--json", action="store_true", help="print the full result as JSON")

@@ -55,4 +55,5 @@ ignore = ["E731", "E701", "E741", "B023"]
 [tool.ruff.lint.per-file-ignores]
 # Embedded CSS, JavaScript and HTML templates.
 "src/maritime_optimizer/viz/dashboard.py" = ["E501"]
+"src/maritime_optimizer/viz/html.py" = ["E501"]
 "src/maritime_optimizer/agents/report.py" = ["E501"]

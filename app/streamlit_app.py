@@ -13,7 +13,7 @@ from maritime_optimizer import (
     load_ports_from_csv, load_vessels_from_csv, optimize_voyage,
 )
 from maritime_optimizer.scenarios import build_request
-from maritime_optimizer.viz.dashboard import DISCLAIMER
+from maritime_optimizer.viz.html import DISCLAIMER
 from maritime_optimizer.viz.figures import cost_breakdown, eur, hbar, mean_speed, route_map
 from maritime_optimizer.viz.theme import CORRIDOR_SLOTS
 
@@ -48,6 +48,8 @@ with st.sidebar:
     cargo = st.number_input("Cargo (t)", 1_000, 400_000, int(min(vessel.dwt * 0.85, 400_000)), 1_000)
     tmax = st.number_input("Maximum transit time (h)", 24, 5_000, 1_500, 24)
     year = st.selectbox("Year", list(range(2026, 2036)), index=0)
+    epl = st.number_input("EEXI speed cap from the engine power limitation (kn, 0 = none)",
+                          0.0, float(vessel.design_speed), 0.0, 0.5)
     penalty = st.toggle("Price the FuelEU penalty into the optimum", value=False)
     corridors = st.toggle("Compare Suez vs Cape of Good Hope", value=False)
 
@@ -61,7 +63,8 @@ if origin == destination:
 vessel = replace(vessel, fuel_type=FuelType(fuel))
 request = build_request(vessel, origin_port=origin, destination_port=destination, year=year,
                         eua_price=float(eua), cargo_tons=float(cargo), max_transit_hours=float(tmax),
-                        time_charter_rate=float(tce), include_fueleu_penalty=penalty)
+                        time_charter_rate=float(tce), include_fueleu_penalty=penalty,
+                        epl_max_speed_knots=float(epl) if epl else None)
 
 if corridors:
     found = {k: r for k, r in compare_canal_routes(graph, request).items() if r is not None}

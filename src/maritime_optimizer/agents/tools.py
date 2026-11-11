@@ -50,7 +50,8 @@ def _port(code: str) -> str:
 
 def _request(origin: str, destination: str, vessel: str, eua_price: float, fuel: Optional[str],
              year: int, cargo_tons: Optional[float], max_transit_hours: float,
-             time_charter_eur_day: Optional[float], include_fueleu_penalty: bool):
+             time_charter_eur_day: Optional[float], include_fueleu_penalty: bool,
+             epl_max_speed_knots: Optional[float] = None):
     v = _vessel(vessel)
     if fuel:
         try:
@@ -60,7 +61,8 @@ def _request(origin: str, destination: str, vessel: str, eua_price: float, fuel:
     kwargs = dict(origin_port=_port(origin), destination_port=_port(destination), year=year,
                   eua_price=eua_price, max_transit_hours=max_transit_hours,
                   cargo_tons=cargo_tons if cargo_tons else round(v.dwt * 0.85),
-                  include_fueleu_penalty=include_fueleu_penalty)
+                  include_fueleu_penalty=include_fueleu_penalty,
+                  epl_max_speed_knots=epl_max_speed_knots)
     if time_charter_eur_day:
         kwargs["time_charter_rate"] = time_charter_eur_day
     return build_request(v, **kwargs)
@@ -100,6 +102,7 @@ def summarize(r: Optional[VoyageResult]) -> Optional[dict]:
                    "limit_gco2e_mj": round(r.fueleu_max_allowed, 2), "compliant": r.fueleu_compliant,
                    "deficit_gco2e_mj": round(max(deficit, 0.0), 2)},
         "iso14083_gco2e_per_tkm": round(r.iso14083_intensity, 3),
+        "eexi": {"epl_max_speed_kn": r.epl_max_speed_knots, "binding": r.eexi_binding},
     }
 
 
@@ -120,6 +123,8 @@ DEFINITIONS = {
     "cii": "MARPOL Annex VI operational carbon intensity of this voyage alone; the legal rating "
            "is annual, per ship.",
     "costs_eur.time_charter": "Opportunity cost of the ship's days at sea (time-charter equivalent).",
+    "eexi": "MARPOL Annex VI reg. 23 engine power limitation as a speed cap (None = no EPL); "
+            "binding = the optimizer sailed at that cap.",
 }
 
 
@@ -142,10 +147,11 @@ def optimize_route(origin: str, destination: str, vessel: str, eua_price: float 
                    fuel: Optional[str] = None, year: int = 2026, cargo_tons: Optional[float] = None,
                    max_transit_hours: float = 1500.0, avoid: Optional[List[str]] = None,
                    time_charter_eur_day: Optional[float] = None,
-                   include_fueleu_penalty: bool = False) -> dict:
+                   include_fueleu_penalty: bool = False,
+                   epl_max_speed_knots: Optional[float] = None) -> dict:
     """Cheapest feasible route and speed for one voyage."""
     req = _request(origin, destination, vessel, eua_price, fuel, year, cargo_tons, max_transit_hours,
-                   time_charter_eur_day, include_fueleu_penalty)
+                   time_charter_eur_day, include_fueleu_penalty, epl_max_speed_knots)
     excluded = {c.strip().upper() for c in avoid} if avoid else None
     result = optimize_voyage(get_graph(), req, exclude_nodes=excluded)
     return {"result": summarize(result), "feasible": result is not None, "disclaimer": DISCLAIMER}

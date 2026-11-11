@@ -8,7 +8,7 @@ pytest.importorskip("plotly")
 
 from maritime_optimizer.cli import main  # noqa: E402
 from maritime_optimizer.viz import build_dashboard, route_map  # noqa: E402
-from maritime_optimizer.viz.dashboard import DISCLAIMER  # noqa: E402
+from maritime_optimizer.viz.html import DISCLAIMER  # noqa: E402
 
 APP = Path(__file__).parents[1] / "app" / "streamlit_app.py"
 

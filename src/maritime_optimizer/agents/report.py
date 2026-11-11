@@ -15,7 +15,8 @@ from pydantic import BaseModel
 
 from ..graph import MaritimeGraph
 from ..models import VoyageResult
-from ..viz.dashboard import CSS, DISCLAIMER, PLOTLY_CDN, THEME_JS, _card, _table, _cost_rows, COST_HEADERS
+from ..viz.html import (COST_HEADERS, CSS, DISCLAIMER, PLOTLY_CDN, THEME_JS, chart_card,
+                        cost_table_rows, data_table)
 from ..viz.figures import cost_breakdown, route_map
 from ._claude import FALLBACK_KWARGS, MODEL, check_refusal, make_client
 from .tools import DEFINITIONS, summarize
@@ -228,12 +229,12 @@ def render_html(report: Report, graph: MaritimeGraph, rows: Sequence[Tuple[str, 
                    'Trust the tables and charts.</p>')
     routes = {label: r for label, r in rows}
     cards = [
-        _card("Route", "Optimized route(s) on the maritime graph.", route_map(graph, routes),
-              _table(["Alternative", "Route"], [[lbl, " → ".join(graph.ports[c].name for c in r.route_ports
+        chart_card("Route", "Optimized route(s) on the maritime graph.", route_map(graph, routes),
+              data_table(["Alternative", "Route"], [[lbl, " → ".join(graph.ports[c].name for c in r.route_ports
                                                                    if not c.startswith("WP_"))]
                                                  for lbl, r in rows]), "map", wide=True),
-        _card("Cost breakdown", "Objective Z by term.", cost_breakdown(list(rows)),
-              _table(COST_HEADERS, _cost_rows(list(rows))), "cost", wide=True),
+        chart_card("Cost breakdown", "Objective Z by term.", cost_breakdown(list(rows)),
+              data_table(COST_HEADERS, cost_table_rows(list(rows))), "cost", wide=True),
     ]
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

@@ -81,6 +81,16 @@ class Vessel:
         """Ámbito MRV: ≥ 5000 GT (Reg. (UE) 2015/757)."""
         return self.gt >= 5000
 
+    def epl_speed_knots(self, power_fraction: float) -> float:
+        """Speed cap of an engine power limitation that allows ``power_fraction`` of MCR.
+
+        In this model the propulsion power at design speed is the MCR (consumption scales
+        with MCR·(v/v_d)³), so limiting power to a fraction f of MCR caps speed at v_d·f^(1/3).
+        """
+        if not 0 < power_fraction <= 1:
+            raise ValueError("power_fraction must be in (0, 1]")
+        return self.design_speed * power_fraction ** (1 / 3)
+
     @property
     def is_cii_applicable(self) -> bool:
         """Ámbito CII: ≥ 5000 GT (MARPOL VI Reg. 28)."""
@@ -169,6 +179,9 @@ class VoyageResult:
     optimal_cost_eur: float = 0.0
     # Factor aplicado a v_max por el reintento CII (1.0 = sin reintento).
     cii_speed_cap_factor: float = 1.0
+    # EEXI engine power limitation applied to this voyage, and whether it bounded the speed.
+    epl_max_speed_knots: Optional[float] = None
+    eexi_binding: bool = False
 
     def aggregate(self):
         """Suma los tramos en los totales del viaje."""
@@ -198,7 +211,11 @@ class OptimizationRequest:
     eua_price: float = 65.0
     fuel_price_override: Optional[dict] = None
     min_speed_knots: float = 8.0
-    max_speed_knots: float = 0.0       # 0 → design_speed del buque
+    max_speed_knots: float = 0.0       # operational top speed; 0 → design_speed del buque
+    # EEXI (MARPOL Annex VI reg. 23): maximum speed reachable under the ship's engine power
+    # limitation (EPL/ShaPoLi). None = no EPL. The effective cap is min(max_speed, this).
+    # Vessel.epl_speed_knots(f) converts an EPL power fraction into this speed.
+    epl_max_speed_knots: Optional[float] = None
     speed_steps: int = 5
     cargo_tons: float = 50_000
     time_charter_rate: float = 15_000.0
@@ -216,6 +233,11 @@ class OptimizationRequest:
     def __post_init__(self):
         if self.max_speed_knots <= 0:
             self.max_speed_knots = self.vessel.design_speed
+        if self.epl_max_speed_knots is not None:
+            if self.epl_max_speed_knots < self.min_speed_knots:
+                raise ValueError(f"epl_max_speed_knots ({self.epl_max_speed_knots}) is below "
+                                 f"min_speed_knots ({self.min_speed_knots})")
+            self.max_speed_knots = min(self.max_speed_knots, self.epl_max_speed_knots)
         if self.edge_resistance and min(self.edge_resistance.values()) <= 0:
             raise ValueError("edge_resistance factors must be > 0")
         if self.fueleu_consecutive_deficit_years < 1:

@@ -349,6 +349,9 @@ def _optimize_once(graph: MaritimeGraph, request: OptimizationRequest,
         result.aggregate()
         result.rank = rank
         result.optimal_cost_eur = optimal_cost
+        result.epl_max_speed_knots = request.epl_max_speed_knots
+        result.eexi_binding = bool(request.epl_max_speed_knots and legs and max(
+            leg.speed_knots for leg in legs) >= request.epl_max_speed_knots - 1e-6)
         apply_cii_filter(result)
         apply_fueleu_check(result)
         if not result.cii_compliant:          # T_max is already guaranteed by _build_legs

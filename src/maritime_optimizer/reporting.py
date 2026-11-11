@@ -49,6 +49,9 @@ def format_voyage_report(result: VoyageResult) -> str:
     lines.append(f"  Distance:      {result.total_distance_nm:,.1f} NM")
     lines.append(f"  Transit time:  {result.total_transit_hours:,.1f} h "
                  f"({result.total_transit_hours / 24:.1f} days)")
+    if result.epl_max_speed_knots:
+        lines.append(f"  EEXI/EPL cap:  {result.epl_max_speed_knots:.1f} kn "
+                     f"({'binding' if result.eexi_binding else 'not binding'})")
     if result.cii_speed_cap_factor < 1.0:
         lines.append(f"  CII retry:     speed capped at {result.cii_speed_cap_factor:.0%} "
                      f"of v_max to reach CII rating C")
