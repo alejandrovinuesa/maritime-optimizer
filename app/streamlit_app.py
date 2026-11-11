@@ -96,7 +96,7 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 [data-testid="stMetricLabel"] p{font-size:11px;letter-spacing:.08em;text-transform:uppercase;
   color:var(--mo-muted)}
 [data-testid="stMetric"] [data-testid="stIconMaterial"]{color:var(--mo-blue)}
-[data-testid="stMetricValue"]{font-size:1.5rem;font-weight:600;color:var(--mo-ink)}
+[data-testid="stMetricValue"]{font-size:clamp(1.05rem,1.55vw,1.5rem);font-weight:600;color:var(--mo-ink)}
 
 /* itinerary */
 .mo-itin{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:16px 0 10px}

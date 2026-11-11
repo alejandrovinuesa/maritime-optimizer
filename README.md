@@ -22,9 +22,9 @@ Since 2024 shipping emissions have a price in Europe. Every decision about **whi
 
 Every regulatory number lives in a CSV that cites its legal source, so the model can be audited, and updated, without touching code.
 
-[![Interactive app: Valencia to Singapore, Suez vs Cape of Good Hope](docs/img/app.png)](#interactive-app)
+[![Interactive app: Valencia to Singapore, Suez vs Cape of Good Hope](docs/img/app.png)](https://maritime-optimizer.streamlit.app/?origin=ESVLC&destination=SGSIN&compare=1)
 
-**Interactive app:** pick two ports, a deadline and a vessel and get the optimized voyage on a map; ask Claude for a compliance report or questions with your own API key ([details](#interactive-app)).
+**[Open the live app](https://maritime-optimizer.streamlit.app)** · pick two ports, a deadline and a vessel and get the optimized voyage on a map; ask Claude for a compliance report or questions with your own API key ([details](#interactive-app)). Try [Valencia → Singapore, Suez vs Cape](https://maritime-optimizer.streamlit.app/?origin=ESVLC&destination=SGSIN&compare=1).
 
 **Live dashboards:** [E1](https://alexvinuesa22-debug.github.io/maritime-optimizer/e1.html) · [E2](https://alexvinuesa22-debug.github.io/maritime-optimizer/e2.html) · [E3](https://alexvinuesa22-debug.github.io/maritime-optimizer/e3.html) · [E4](https://alexvinuesa22-debug.github.io/maritime-optimizer/e4.html) · [E5](https://alexvinuesa22-debug.github.io/maritime-optimizer/e5.html)
 
@@ -90,6 +90,8 @@ Each HTML dashboard has KPI tiles (cost, speed, CO₂, CII rating, FuelEU status
 
 ## Interactive app
 
+**Live:** [maritime-optimizer.streamlit.app](https://maritime-optimizer.streamlit.app) (hosted on Streamlit Community Cloud; it sleeps after a few days without visits and wakes up in about a minute). Or run it locally:
+
 ```bash
 pip install -e ".[app,agents]"
 streamlit run app/streamlit_app.py
@@ -99,7 +101,7 @@ Choose origin, destination, maximum transit time, vessel and fuel; the market, c
 
 **AI report** and **Ask the agent** need an Anthropic API key, typed by each user in the sidebar and billed to their own account. The key stays in the browser session's memory and is never written to disk, logged or put in a URL; every call shows its token count and approximate cost. A server-side `ANTHROPIC_API_KEY` is **ignored** unless `MARITIME_OPT_ALLOW_SERVER_KEY=1` is set, so a public deployment never spends the deployer's credit on visitors. Only type your key into an instance you trust, or run the app locally.
 
-Scenarios can be shared as links: `?origin=ESVLC&destination=SGSIN&compare=1` (also `vessel`, `fuel` and `hours`) presets the inputs.
+Scenarios can be shared as links: [`?origin=ESVLC&destination=SGSIN&compare=1`](https://maritime-optimizer.streamlit.app/?origin=ESVLC&destination=SGSIN&compare=1) (also `vessel`, `fuel` and `hours`) presets the inputs.
 
 **Deploy your own copy** on [Streamlit Community Cloud](https://streamlit.io/cloud) (free): fork the repository, choose *Create app*, select the fork, branch `main` and main file `app/streamlit_app.py`. [`requirements.txt`](requirements.txt) installs the package with its extras and [`.streamlit/config.toml`](.streamlit/config.toml) sets the theme. Do not add an API key to the app's secrets: visitors bring their own.
 
