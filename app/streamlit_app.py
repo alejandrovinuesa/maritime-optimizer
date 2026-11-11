@@ -22,6 +22,9 @@ from maritime_optimizer import (
     FuelType, MaritimeGraph, compare_canal_routes, ensure_geodata, has_geodata,
     load_ports_from_csv, load_vessels_from_csv, optimize_voyage,
 )
+from maritime_optimizer.compliance import (
+    fueleu_in_scope, voyage_fueleu_penalty_eur,
+)
 from maritime_optimizer.routing import is_canal_node, is_waypoint_node
 from maritime_optimizer.scenarios import build_request
 from maritime_optimizer.viz.figures import (
@@ -345,12 +348,17 @@ with tab_voyage:
     cols[3].metric("CO₂ emitted", f"{best.total_co2_combustion_tons:,.0f} t", icon=":material/co2:", **kpi)
     cols[4].metric("CII rating", f"{'✓' if best.cii_compliant else '!'} {best.cii_rating.value}",
                    icon=":material/eco:", **kpi)
-    cols[5].metric("FuelEU 2026+", "✓ compliant" if best.fueleu_compliant else "! deficit",
-                   f"{best.fueleu_intensity - best.fueleu_max_allowed:+.2f} g/MJ",
-                   delta_color="inverse", icon=":material/local_gas_station:",
-                   help="Well-to-wake GHG intensity minus the FuelEU limit for the year, in gCO₂e/MJ "
-                        "(positive = above the limit).",
-                   **kpi)
+    in_scope = fueleu_in_scope(best)
+    gap = best.fueleu_intensity - best.fueleu_max_allowed
+    if in_scope:
+        cols[5].metric("FuelEU 2026+", "✓ compliant" if best.fueleu_compliant else "! deficit",
+                       f"{gap:+.2f} g/MJ", delta_color="inverse", icon=":material/local_gas_station:",
+                       help="Well-to-wake GHG intensity minus the FuelEU limit for the year, in "
+                            "gCO₂e/MJ (positive = above the limit).", **kpi)
+    else:
+        cols[5].metric("FuelEU 2026+", "n/a", "outside EU scope", delta_color="off", delta_arrow="off",
+                       icon=":material/local_gas_station:",
+                       help="FuelEU Maritime applies only to voyages with an EU/EEA port.", **kpi)
     if corridors and len(routes) == 2:
         other = next(r for n, r in routes.items() if n != best_name)
         st.info(f"**{best_name}** is cheaper by {eur(other.total_cost_eur - best.total_cost_eur)}.",
@@ -361,6 +369,12 @@ with tab_voyage:
     if best.eexi_binding:
         st.info(f"EEXI: the engine power limitation caps the speed at "
                 f"{best.epl_max_speed_knots:.1f} kn.", icon=":material/settings:")
+    if in_scope and not best.fueleu_compliant:
+        priced = best.total_fueleu_penalty_eur > 0
+        fine = best.total_fueleu_penalty_eur if priced else voyage_fueleu_penalty_eur(best)
+        st.warning(f"FuelEU deficit: estimated penalty **{eur(fine)}** "
+                   f"({'included in' if priced else 'not in'} the voyage cost). Pooling, banking and "
+                   "borrowing are not modelled and could avoid it.", icon=":material/gavel:")
 
     st.markdown(itinerary_html(graph, best, P["series"][ROUTE_SLOTS[best_name]]), unsafe_allow_html=True)
     with st.container(border=True):

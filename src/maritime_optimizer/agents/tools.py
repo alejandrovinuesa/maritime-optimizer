@@ -9,6 +9,7 @@ from dataclasses import replace
 from functools import lru_cache
 from typing import Dict, List, Optional
 
+from ..compliance import FUELEU_FLEXIBILITY_NOTE, fueleu_in_scope, voyage_fueleu_penalty_eur
 from ..geodata import ensure_geodata, has_geodata
 from ..graph import MaritimeGraph, load_ports_from_csv, load_vessels_from_csv
 from ..models import FuelType, VoyageResult
@@ -98,12 +99,24 @@ def summarize(r: Optional[VoyageResult]) -> Optional[dict]:
         "cii": {"attained": round(r.cii_attained, 3), "required": round(r.cii_required, 3),
                 "rating": r.cii_rating.value, "compliant": r.cii_compliant,
                 "speed_cap_factor": r.cii_speed_cap_factor},
-        "fueleu": {"intensity_gco2e_mj": round(r.fueleu_intensity, 2),
-                   "limit_gco2e_mj": round(r.fueleu_max_allowed, 2), "compliant": r.fueleu_compliant,
-                   "deficit_gco2e_mj": round(max(deficit, 0.0), 2)},
+        "fueleu": fueleu_summary(r, deficit),
         "iso14083_gco2e_per_tkm": round(r.iso14083_intensity, 3),
         "eexi": {"epl_max_speed_kn": r.epl_max_speed_knots, "binding": r.eexi_binding},
     }
+
+
+def fueleu_summary(r: VoyageResult, deficit: float) -> dict:
+    in_scope = fueleu_in_scope(r)
+    out = {"in_scope": in_scope, "intensity_gco2e_mj": round(r.fueleu_intensity, 2),
+           "limit_gco2e_mj": round(r.fueleu_max_allowed, 2),
+           "compliant": r.fueleu_compliant or not in_scope,
+           "deficit_gco2e_mj": round(max(deficit, 0.0), 2) if in_scope else 0.0}
+    if in_scope and deficit > 0:
+        priced = r.total_fueleu_penalty_eur > 0
+        out.update(estimated_penalty_eur=round(r.total_fueleu_penalty_eur if priced
+                                               else voyage_fueleu_penalty_eur(r)),
+                   penalty_included_in_total=priced, note=FUELEU_FLEXIBILITY_NOTE)
+    return out
 
 
 # What each summary field means, so a model reading the JSON does not have to guess.
@@ -118,6 +131,12 @@ DEFINITIONS = {
                         "extra-EU) x EUA price, less the ice-class deduction if any.",
     "fueleu.intensity_gco2e_mj": "FuelEU Maritime well-to-wake GHG intensity (upstream + combustion "
                                  "+ slip) per MJ, compared with the limit for the year.",
+    "fueleu.in_scope": "FuelEU applies only to voyages with an EU/EEA port; out of scope means no "
+                       "deficit and no penalty.",
+    "fueleu.estimated_penalty_eur": "Annex IV penalty attributable to this voyage's deficit "
+                                    "(energy in scope: 100 % intra-EU, 50 % extra-EU). "
+                                    "penalty_included_in_total says whether costs_eur.total contains it. "
+                                    "Pooling, banking and borrowing are not modelled and could avoid it.",
     "iso14083_gco2e_per_tkm": "ISO 14083 well-to-wake intensity per tonne-km, without biofuel "
                               "zero-rating; a reporting metric with no limit.",
     "cii": "MARPOL Annex VI operational carbon intensity of this voyage alone; the legal rating "

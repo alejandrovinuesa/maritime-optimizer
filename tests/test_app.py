@@ -83,3 +83,12 @@ def test_forget_key_clears_it(graph, monkeypatch):
     assert not at.exception
     assert at.session_state["anthropic_key"] == "" and at.chat_input[0].disabled
 
+
+
+def test_fueleu_deficit_note_and_out_of_scope_voyage(graph, monkeypatch):
+    at = run_app()                                   # Valencia → Rotterdam on HFO: deficit
+    note = texts(at.warning)
+    assert "estimated penalty" in note and "Pooling, banking and borrowing" in note
+    at = run_app(origin="AEJEA", destination="BRSSZ")  # no EU port: FuelEU does not apply
+    fueleu = next(m for m in at.metric if m.label == "FuelEU 2026+")
+    assert fueleu.value == "n/a" and "estimated penalty" not in texts(at.warning)

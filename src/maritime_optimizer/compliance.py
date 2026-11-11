@@ -83,6 +83,24 @@ def penalty_for_balance(cb_g: float, actual_intensity: float, consecutive_years:
     return base * (1.0 + (consecutive_years - 1) / 10.0)
 
 
+def fueleu_in_scope(voyage: VoyageResult) -> bool:
+    """FuelEU applies to voyages with at least one EU/EEA port (same scope as the EU ETS)."""
+    return _SCOPE[voyage.geo_type] > 0
+
+
+def voyage_fueleu_penalty_eur(voyage: VoyageResult, consecutive_years: int = 1) -> float:
+    """Annex IV penalty attributable to this voyage's deficit, whether or not it was priced into
+    the objective (``include_fueleu_penalty``); equals the priced penalty at the same speeds.
+    0 when compliant or out of scope."""
+    return penalty_for_balance(compliance_balance_g(voyage), voyage.fueleu_intensity, consecutive_years)
+
+
+# Shown with every voyage-level penalty figure.
+FUELEU_FLEXIBILITY_NOTE = ("FuelEU pooling (art. 21) and banking/borrowing of compliance surplus "
+                           "(art. 20) are not modelled and could reduce or avoid this penalty; the "
+                           "penalty is assessed per ship and reporting period, not per voyage.")
+
+
 @dataclass
 class ShipBalance:
     vessel: str

@@ -75,3 +75,30 @@ def test_pooling_with_a_biofuel_ship_cancels_the_penalty(graph, fleet):
     pooled = fueleu_pool([hfo, bio], 2026)
     assert pooled.valid and pooled.penalty_with_pool_eur == 0
     assert pooled.saving_eur == pytest.approx(alone.penalty_without_pool_eur)
+
+
+def test_voyage_penalty_estimate_matches_priced_penalty_and_scope(graph, fleet, hfo_voyage_request):
+    from maritime_optimizer.compliance import fueleu_in_scope, voyage_fueleu_penalty_eur
+    priced = optimize_voyage(graph, replace(hfo_voyage_request, include_fueleu_penalty=True))
+    assert voyage_fueleu_penalty_eur(priced) == pytest.approx(priced.total_fueleu_penalty_eur, rel=1e-9)
+    unpriced = optimize_voyage(graph, hfo_voyage_request)
+    assert unpriced.total_fueleu_penalty_eur == 0 and voyage_fueleu_penalty_eur(unpriced) > 0
+    # Extra-EU: half the energy in scope. Non-EU: out of scope, no penalty at all.
+    v = fleet["panamax_bulker"]
+    extra = optimize_voyage(graph, build_request(v, origin_port="NLRTM", destination_port="USNYC",
+                                                 include_fueleu_penalty=True))
+    energy = extra.total_fuel_tons * 1000 * EMISSION_FACTORS["HFO"]["lcv"] * 0.5
+    expected = ((extra.fueleu_intensity - extra.fueleu_max_allowed) * energy
+                / (extra.fueleu_intensity * 41_000) * 2_400)
+    assert extra.total_fueleu_penalty_eur == pytest.approx(expected, rel=1e-9)
+    non_eu = optimize_voyage(graph, build_request(v, origin_port="AEJEA", destination_port="BRSSZ",
+                                                  max_transit_hours=3000, include_fueleu_penalty=True))
+    assert not fueleu_in_scope(non_eu) and non_eu.total_fueleu_penalty_eur == 0
+    assert voyage_fueleu_penalty_eur(non_eu) == 0
+
+
+def test_agent_summary_reports_penalty_exposure_and_flexibility_note(graph, hfo_voyage_request):
+    from maritime_optimizer.agents.tools import summarize
+    f = summarize(optimize_voyage(graph, hfo_voyage_request))["fueleu"]
+    assert f["in_scope"] and not f["compliant"] and f["estimated_penalty_eur"] > 0
+    assert f["penalty_included_in_total"] is False and "pooling" in f["note"]
