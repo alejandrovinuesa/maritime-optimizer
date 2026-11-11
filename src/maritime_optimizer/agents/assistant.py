@@ -146,12 +146,22 @@ class Answer:
 
 
 def ask(question: str, client: Optional[Any] = None, model: str = MODEL,
-        max_iterations: int = 12) -> Answer:
-    """Answer a voyage question with Claude driving the optimizer tools (Tool Runner)."""
+        max_iterations: int = 12, history: Optional[List[dict]] = None,
+        context: Optional[str] = None) -> Answer:
+    """Answer a voyage question with Claude driving the optimizer tools (Tool Runner).
+
+    Args:
+        history: earlier turns as ``{"role": "user"|"assistant", "content": str}``, oldest first,
+            so follow-up questions ("and at 120 EUR/t?") keep their meaning.
+        context: facts about the voyage the user is looking at (e.g. the optimizer summary shown
+            on a dashboard); sent with this question, not stored in the history.
+    """
     client = make_client(client)
+    content = (f"Voyage currently on screen (optimizer output):\n{context}\n\nQuestion: {question}"
+               if context else question)
     runner = client.beta.messages.tool_runner(
         model=model, max_tokens=16000, system=SYSTEM, tools=TOOLS,
-        messages=[{"role": "user", "content": question}],
+        messages=[*(history or []), {"role": "user", "content": content}],
         output_config={"effort": "medium"}, max_iterations=max_iterations, **FALLBACK_KWARGS)
     calls: List[str] = []
     final = None

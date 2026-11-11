@@ -37,6 +37,24 @@ DARK = {
                "#d55181", "#008300", "#9085e9", "#e66767"],
 }
 
+# Navy dark theme of the Streamlit app: same validated series as DARK (they pass the lightness,
+# chroma, CVD and contrast checks against this surface too), on blue-black surfaces.
+NAVY = {
+    "surface": "#111d33",
+    "page": "#0b1424",
+    "sidebar": "#08101e",
+    "ink": "#f2f5fa",
+    "ink2": "#b9c4d8",
+    "muted": "#8391ab",
+    "grid": "#1e2c47",
+    "axis": "#2b3c5e",
+    "land": "#1a2944",
+    "ocean": "#0d1830",
+    "coast": "#3a4f78",
+    "border": "#22314f",
+    "series": DARK["series"],
+}
+
 # Status colours are reserved for good/bad meaning and always ship with an icon + label.
 STATUS = {"good": "#0ca30c", "warning": "#fab219", "serious": "#ec835a", "critical": "#d03b3b"}
 

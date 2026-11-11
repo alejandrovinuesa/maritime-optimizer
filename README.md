@@ -75,7 +75,7 @@ pip install -e ".[viz]"
 maritime-opt dashboard all --out dashboards     # five self-contained HTML pages + index.html
 
 pip install -e ".[app]"
-streamlit run app/streamlit_app.py             # interactive app: any vessel, ports, fuel, EUA price
+streamlit run app/streamlit_app.py             # interactive app: ports, deadline, vessel → optimized voyage on a map
 ```
 
 Each HTML dashboard has KPI tiles (cost, speed, CO₂, CII rating, FuelEU status, ISO 14083 intensity), the route map, the cost breakdown and scenario-specific charts. Every chart has hover tooltips and a data table, light and dark mode follow the system setting, and the data notice is printed in the footer. Pre-built copies live in [`examples/dashboards/`](examples/dashboards/) and are published on GitHub Pages by [`pages.yml`](.github/workflows/pages.yml).
@@ -122,7 +122,9 @@ Example: [the E5 report (Suez vs Cape)](https://alexvinuesa22-debug.github.io/ma
 maritime-opt regulatory-update amendment.txt --out-dir proposal/
 ```
 
-The agents use `claude-opus-5-5` with server-side refusal fallbacks enabled (`fallbacks="default"`), so a declined request is retried on a fallback model inside the same call. **Bring your own key.** The project ships no API key and never calls Claude on anyone's behalf: `ask`, `report` and `regulatory-update` use the credentials of whoever runs them and are billed to that account. Everything else (optimizer, CLI, MCP server, dashboards, Streamlit app, tests) makes no model calls and costs nothing.
+The agents use `claude-opus-5-5` with server-side refusal fallbacks enabled (`fallbacks="default"`), so a declined request is retried on a fallback model inside the same call. **Bring your own key.** The project ships no API key and never calls Claude on anyone's behalf: `ask`, `report` and `regulatory-update` use the credentials of whoever runs them and are billed to that account. Everything else (optimizer, CLI, MCP server, dashboards, tests) makes no model calls and costs nothing.
+
+**Streamlit app with your own key.** `pip install -e ".[app,agents]"` then `streamlit run app/streamlit_app.py`. Pick two ports, a maximum transit time and a vessel to get the optimized voyage on a map, with costs, emissions and compliance. Paste your Anthropic API key in the sidebar to unlock two more tabs: **AI report** (one request; the compliance narrative with its automatic figure check, downloadable as HTML) and **Ask the agent** (a chat that knows the voyage on screen, keeps the conversation and calls the optimizer tools). The key stays in the browser session's memory, is never written to disk, logged or put in a URL, and the token count and approximate cost of every call are shown. A server-side `ANTHROPIC_API_KEY` is **ignored** unless `MARITIME_OPT_ALLOW_SERVER_KEY=1` is set, so a public deployment never spends the deployer's credit on visitors; set it only on your own machine. Only type your key into an instance you trust, or run the app locally.
 
 ## The model
 
@@ -196,7 +198,7 @@ Run them with `maritime-opt scenario all`.
 
 ## Validation
 
-`pytest` runs 60 tests: arithmetic identities of the fuel, CII and ETS formulas; biofuel zero-rating; ISO 14083 properties; route symmetry; monotonicity in the carbon price; k-shortest paths under a deadline; analytic speed vs golden-section search; A* vs Dijkstra; the CII retry; the FuelEU penalty, annual CII and pooling; per-leg resistance and its KKT deadline solution; that no edge crosses land beyond the tolerance; geographic sanity checks on known distances; cache consistency; that every fuel has an explicit calorific value and well-to-tank factor; the dashboards and the Streamlit app; the MCP server and the three agents against a fake Claude client (no network); and a numerical regression of the five scenarios. These are **internal consistency checks**, not a validation against measured fleet consumption.
+`pytest` runs 70 tests: arithmetic identities of the fuel, CII and ETS formulas; biofuel zero-rating; ISO 14083 properties; route symmetry; monotonicity in the carbon price; k-shortest paths under a deadline; analytic speed vs golden-section search; A* vs Dijkstra; the CII retry; the FuelEU penalty, annual CII and pooling; per-leg resistance and its KKT deadline solution; that no edge crosses land beyond the tolerance; geographic sanity checks on known distances; cache consistency; that every fuel has an explicit calorific value and well-to-tank factor; the dashboards and the Streamlit app, including that it only spends the key the user types in; the MCP server and the three agents against a fake Claude client (no network); and a numerical regression of the five scenarios. These are **internal consistency checks**, not a validation against measured fleet consumption.
 
 ## Data and disclaimer
 

@@ -205,3 +205,14 @@ def test_report_carries_ai_disclaimer(graph, e5_rows):
     page = write_report("E5", e5_rows, client=client).to_html(graph, e5_rows)
     assert 'aria-label="AI-generated content"' in page and "AI-generated narrative" in page
     assert page.index("AI-generated content.") < page.index("<h2>Summary</h2>")
+
+
+def test_assistant_sends_history_and_screen_context(graph):
+    from maritime_optimizer.agents.assistant import ask
+    client, msgs = fake_client(final_text="At 120 EUR/t the optimum slows down.")
+    history = [{"role": "user", "content": "Cost of this voyage?"},
+               {"role": "assistant", "content": "About 1.2 M EUR."}]
+    ask("And at 120 EUR/t?", client=client, history=history, context='{"origin": "ESVLC"}')
+    sent = msgs.calls[0][1]["messages"]
+    assert sent[:2] == history and sent[2]["role"] == "user"
+    assert '{"origin": "ESVLC"}' in sent[2]["content"] and sent[2]["content"].endswith("And at 120 EUR/t?")

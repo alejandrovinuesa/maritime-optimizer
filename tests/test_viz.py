@@ -40,7 +40,26 @@ def test_streamlit_app_runs(graph):
     from streamlit.testing.v1 import AppTest
     at = AppTest.from_file(str(APP), default_timeout=60).run()
     assert not at.exception
-    assert at.title[0].value == "Valencia → Rotterdam"
+    hero = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-hero"'))
+    assert "Valencia" in hero and "Rotterdam" in hero
     assert len(at.metric) == 6
     at.sidebar.toggle[0].set_value(True).run()               # Suez vs Cape comparison
     assert not at.exception
+
+
+def test_apply_theme_recolours_for_dark_mode(graph, e5_like_rows=None):
+    from maritime_optimizer import optimize_voyage
+    from maritime_optimizer.scenarios import build_request
+    from maritime_optimizer import load_vessels_from_csv
+    from maritime_optimizer.viz.figures import apply_theme, cost_breakdown, route_map
+    from maritime_optimizer.viz.theme import DARK, LIGHT
+    vessel = next(iter(load_vessels_from_csv().values()))
+    r = optimize_voyage(graph, build_request(vessel, origin_port="ESVLC", destination_port="NLRTM"))
+    light = route_map(graph, {"Optimal route": r})
+    assert apply_theme(light, "light").layout.geo.landcolor == LIGHT["land"]
+    dark = apply_theme(route_map(graph, {"Optimal route": r}), "dark")
+    assert dark.layout.geo.landcolor == DARK["land"] and dark.layout.font.color == DARK["ink2"]
+    assert dark.data[0].line.color == DARK["series"][0]
+    bars = apply_theme(cost_breakdown([("A", r)]), "dark")
+    assert bars.data[0].marker.color == DARK["series"][bars.data[0].meta["slot"]]
+

@@ -26,9 +26,9 @@ dependencies = [
 
 [project.optional-dependencies]
 viz = ["plotly>=5.19"]
-app = ["plotly>=5.19", "streamlit>=1.30"]
+app = ["plotly>=5.19", "streamlit>=1.50"]
 agents = ["anthropic>=2.8", "mcp>=2.3", "pydantic>=2", "plotly>=5.19"]
-dev = ["pytest>=8", "ruff>=0.5", "plotly>=5.19", "anthropic>=2.8", "mcp>=2.3", "pydantic>=2"]
+dev = ["pytest>=8", "ruff>=0.5", "plotly>=5.19", "anthropic>=2.8", "mcp>=2.3", "pydantic>=2", "streamlit>=1.50"]
 
 [project.scripts]
 maritime-opt = "maritime_optimizer.cli:main"

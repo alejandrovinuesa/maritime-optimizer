@@ -1,0 +1,24 @@
+# Theme of app/streamlit_app.py: formal navy dark mode, white text, blue accents, orange routes.
+# Colours mirror maritime_optimizer.viz.theme.NAVY (charts are re-coloured with the same tokens).
+[theme]
+base = "dark"
+primaryColor = "#3987e5"
+backgroundColor = "#0b1424"
+secondaryBackgroundColor = "#111d33"
+textColor = "#f2f5fa"
+borderColor = "#22314f"
+linkColor = "#6aa8f0"
+baseRadius = "0.5rem"
+showWidgetBorder = true
+font = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap, sans-serif"
+chartCategoricalColors = ["#3987e5", "#d95926", "#199e70", "#c98500"]
+
+[theme.sidebar]
+backgroundColor = "#08101e"
+secondaryBackgroundColor = "#111d33"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

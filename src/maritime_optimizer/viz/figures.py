@@ -2,7 +2,8 @@
 
 Every figure is built in light-mode colours with a transparent background. Each
 coloured trace carries ``meta={"slot": n}`` so a page can re-colour it for dark
-mode without rebuilding the figure (see ``dashboard.THEME_JS``).
+mode without rebuilding the figure: in the browser with ``html.THEME_JS``, in Python
+with :func:`apply_theme`.
 """
 
 import math
@@ -13,7 +14,7 @@ import plotly.graph_objects as go
 from ..graph import MaritimeGraph
 from ..models import VoyageResult
 from ..routing import is_canal_node, is_waypoint_node
-from .theme import COST_SLOTS, FONT, LIGHT
+from .theme import COST_SLOTS, DARK, FONT, LIGHT
 
 T = LIGHT
 BAR_PX = 22          # bar thickness (spec: <= 24 px)
@@ -229,4 +230,44 @@ def line_xy(x: Sequence[float], y: Sequence[float], x_title: str, y_title: str,
     layout["xaxis"].update(title=x_title, showgrid=False, tickvals=list(x))
     layout["yaxis"].update(title=y_title, tickformat=y_fmt)
     fig.update_layout(layout)
+    return fig
+
+
+# ---------------------------------------------------------------- dark mode (server side)
+
+def apply_theme(fig: go.Figure, mode: str = "light", palette: Optional[dict] = None) -> go.Figure:
+    """Re-colour a figure built by this module for ``mode`` ("light" or "dark"), in place.
+
+    Python twin of ``html.THEME_JS``: same tokens, same rules, for hosts such as Streamlit
+    that render the figure on the server. ``palette`` replaces the dark tokens (e.g.
+    ``theme.NAVY``); it must have the keys of ``theme.DARK``.
+    """
+    if mode != "dark":
+        return fig
+    p = palette or DARK
+    fig.update_layout(font_color=p["ink2"], hoverlabel_bgcolor=p["surface"],
+                      hoverlabel_font_color=p["ink"], legend_font_color=p["ink2"])
+    axis = dict(gridcolor=p["grid"], linecolor=p["axis"], tickfont_color=p["muted"],
+                title_font_color=p["ink2"])
+    fig.update_xaxes(**axis)
+    fig.update_yaxes(**axis)
+    if "geo" in fig.layout and fig.layout.geo.projection.type:
+        fig.update_geos(landcolor=p["land"], oceancolor=p["ocean"], lakecolor=p["ocean"],
+                        coastlinecolor=p["coast"])
+    for a in fig.layout.annotations:
+        a.font.color = p["ink"] if a.xanchor == "left" and a.yref != "paper" else p["ink2"]
+    for s in fig.layout.shapes:
+        s.line.color = p["ink2"]
+    for tr in fig.data:
+        meta = tr.meta if isinstance(tr.meta, dict) else {}
+        tr.marker.line.color = p["surface"]
+        if "slot" in meta:
+            tr.marker.color = p["series"][meta["slot"]]
+            if "line" in tr:
+                tr.line.color = p["series"][meta["slot"]]
+        if meta.get("role") == "nodes":
+            tr.marker.color = p["ink2"]
+            tr.textfont.color = p["ink2"]
+        if tr.type == "bar" and tr.text is not None:
+            tr.textfont.color = p["ink"]
     return fig
