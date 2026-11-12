@@ -114,7 +114,7 @@ def test_query_params_preset_the_scenario(graph):
     at.run()
     assert not at.exception
     hero = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-hero"'))
-    assert "Singapore" in hero and "LNG" in hero and "2,500 h" in hero
+    assert "Singapore" in hero and "LNG" in hero and "2 500 h" in hero and "104.2 days" in hero
     assert at.sidebar.toggle[0].value is True                     # Suez vs Cape comparison on
-    assert at.sidebar.selectbox[2].value == at.sidebar.selectbox[2].options[0]   # invalid → default
+    assert at.sidebar.selectbox[2].value == "panamax_bulker"            # invalid → default vessel
 

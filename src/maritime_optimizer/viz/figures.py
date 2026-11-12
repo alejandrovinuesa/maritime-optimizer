@@ -68,7 +68,7 @@ def _layout(height: int, **kw) -> dict:
         xaxis=dict(axis), yaxis=dict(axis),
         legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0, traceorder="normal",
                     font=dict(color=T["ink2"])),
-        barcornerradius=4,
+        barcornerradius=4, separators=f".{THIN}",   # decimal point, thin-space thousands
         showlegend=False,
     )
     base.update(kw)
@@ -203,7 +203,7 @@ def hbar(labels: Sequence[str], values: Sequence[float], unit: str, fmt: str = "
          ref: Optional[float] = None, ref_label: str = "", slot: int = 0,
          x_from_zero: bool = True) -> go.Figure:
     """One series of horizontal bars with the value at the tip and an optional reference line."""
-    text = [f"{v:{fmt}} {unit}" for v in values]
+    text = [f"{v:{fmt}} {unit}".replace(",", THIN) for v in values]
     fig = go.Figure(go.Bar(
         y=list(labels), x=list(values), orientation="h", text=text, textposition="outside",
         textfont=dict(color=T["ink"]), cliponaxis=False, meta={"slot": slot},

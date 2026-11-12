@@ -31,6 +31,7 @@ from maritime_optimizer.viz.figures import (
     apply_theme, cost_breakdown, cost_components, eur, hbar, mean_speed, num, route_map,
 )
 from maritime_optimizer.viz.html import DISCLAIMER
+from maritime_optimizer.viz.labels import fuel_label, vessel_label, vessel_type_label
 from maritime_optimizer.viz.theme import COST_SLOTS, NAVY, ROUTE_SLOTS, STATUS
 
 try:  # the AI features need the 'agents' extra
@@ -238,7 +239,7 @@ def run_agent(fn, *args, **kwargs):
 
 def cost_hint(tokens_in: int, tokens_out: int) -> str:
     usd = tokens_in / 1e6 * PRICE_IN + tokens_out / 1e6 * PRICE_OUT
-    return f"{tokens_in:,} input / {tokens_out:,} output tokens · ≈ ${usd:.3f} on your account"
+    return f"{num(tokens_in)} input / {num(tokens_out)} output tokens · ≈ ${usd:.3f} on your account"
 
 
 def itinerary_html(graph: MaritimeGraph, result, color: str) -> str:
@@ -252,7 +253,7 @@ def itinerary_html(graph: MaritimeGraph, result, color: str) -> str:
     parts = [f'<div class="mo-stop end"><b>{esc(graph.ports[first].name)}</b><small>{first}</small></div>']
     for s in stretches(graph, result):
         stop = s["destination"]
-        parts.append(f'<div class="mo-seg"><span>{s["nm"]:,.0f} NM</span>'
+        parts.append(f'<div class="mo-seg"><span>{num(s["nm"])} NM</span>'
                      f'<span>{s["knots"]:.1f} kn</span></div>')
         kind = "end" if stop == last else "canal" if is_canal_node(stop) else ""
         parts.append(f'<div class="mo-stop {kind}"><b>{esc(graph.ports[stop].name)}</b>'
@@ -331,14 +332,20 @@ with st.sidebar:
     st.button("Swap origin and destination", icon=":material/swap_vert:", on_click=swap_ports,
               width="stretch")
     hours = QUERY.get("hours", "")
-    tmax = st.number_input("Maximum transit time (h)", 24, 5_000,
-                           int(hours) if hours.isdigit() and 24 <= int(hours) <= 5_000 else 1_500, 24)
+    preset_hours = int(hours) if hours.isdigit() and 24 <= int(hours) <= 5_000 else 1_500
+    # Entered in days (how a voyage deadline is thought of); the optimizer works in hours.
+    days_max = st.number_input("Maximum transit time (days)", 1.0, 5_000 / 24, preset_hours / 24, 0.5,
+                               format="%.1f")
+    tmax = round(days_max * 24)
+    st.caption(f"= {num(tmax)} h")
     side_section("Vessel")
     vessels = list(fleet)
-    vessel_name = st.selectbox("Vessel", vessels, index=vessels.index(preset("vessel", vessels, vessels[0])))
+    vessel_name = st.selectbox("Vessel", vessels, index=vessels.index(preset("vessel", vessels, vessels[0])),
+                               format_func=vessel_label)
     vessel = fleet[vessel_name]
     fuels = ["HFO", "MGO", "LNG", "BioLNG", "HVO", "E-Methanol"]
-    fuel = st.selectbox("Fuel", fuels, index=fuels.index(preset("fuel", fuels, vessel.fuel_type.value)))
+    fuel = st.selectbox("Fuel", fuels, index=fuels.index(preset("fuel", fuels, vessel.fuel_type.value)),
+                        format_func=fuel_label)
     corridors = st.toggle("Compare Suez vs Cape of Good Hope", value=QUERY.get("compare") == "1")
     with st.expander("Market, contract and regulation", icon=":material/tune:"):
         eua = st.slider("EUA price (EUR/t CO₂e)", 0, 200, 65, 5)
@@ -367,8 +374,9 @@ with st.sidebar:
                 "`pip install 'maritime-optimizer[agents]'`")
 
 # ------------------------------------------------------------------ header
-specs = [("Vessel", vessel_name), ("Type", vessel.vessel_type.value.replace("_", " ")),
-         ("Deadweight", f"{vessel.dwt:,.0f} t"), ("Fuel", fuel), ("Deadline", f"{tmax:,} h"),
+specs = [("Vessel", vessel_label(vessel_name)), ("Type", vessel_type_label(vessel.vessel_type.value)),
+         ("Deadweight", f"{num(vessel.dwt)} t"), ("Fuel", fuel_label(fuel)),
+         ("Deadline", f"{num(tmax / 24, 1)} days ({num(tmax)} h)"),
          ("EUA price", f"{eua} EUR/t"), ("Year", str(year))]
 st.markdown(
     f'<div class="mo-hero"><div class="mo-eyebrow">Optimized voyage</div>'
