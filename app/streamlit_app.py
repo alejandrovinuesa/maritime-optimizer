@@ -73,7 +73,7 @@ LOGO_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="n
             '<rect x="18.5" y="16.5" width="5" height="4" fill="#fff"/></svg>')
 LOGO = ('<img alt="Maritime Optimizer" width="28" height="28" src="data:image/svg+xml;base64,'
         + base64.b64encode(LOGO_SVG.encode()).decode() + '">')
-LINKEDIN_URL = ""   # TODO: add the LinkedIn profile URL; the link appears once this is set
+LINKEDIN_URL = "https://www.linkedin.com/alejandrovinuesacano/"
 
 st.set_page_config(page_title="Maritime optimizer", page_icon="⚓", layout="wide",
                    initial_sidebar_state="auto")   # auto: collapsed on phones so results show first
@@ -130,7 +130,8 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 .mo-headline .chip i{width:12px;height:12px;border-radius:3px;background:var(--mo-route,var(--mo-opt))}
 
 /* KPI cards */
-[data-testid="stMetric"],.mo-kpi{min-height:124px;background:var(--mo-surface);border:1px solid var(--mo-border);border-radius:10px;
+[data-testid="stMetric"],.mo-kpi{min-height:124px;background:var(--mo-surface);
+  border:1px solid var(--mo-border);border-radius:10px;
   padding:14px 16px}
 .mo-kpi{height:100%;min-height:124px;box-sizing:border-box;padding:14px 12px}
 .mo-kpi .lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mo-ink2);
@@ -141,7 +142,8 @@ h1,h2,h3,h4{letter-spacing:-.01em}
   color:color-mix(in srgb,var(--c) 55%,#fff)!important}
 .mo-badge i{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;color:#0b1424;
   font-style:normal;font-size:11px;font-weight:800}
-[data-testid="stMetricLabel"] p{white-space:nowrap;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+[data-testid="stMetricLabel"] p{white-space:nowrap;font-size:12px;letter-spacing:.08em;
+  text-transform:uppercase;
   color:var(--mo-ink2)}
 [data-testid="stMetric"] [data-testid="stIconMaterial"]{color:var(--mo-blue)}
 [data-testid="stMetricValue"]{font-size:clamp(1rem,1.3vw,1.35rem);font-weight:600;color:var(--mo-ink)}
@@ -196,7 +198,8 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 
 /* the two AI tabs stand out: accent colour and an AI pill */
 [data-testid="stTab"]{display:flex;align-items:center}
-[data-testid="stTab"]:not(:first-child),[data-testid="stTab"]:not(:first-child) p{color:#8dbcf5;font-weight:600}
+[data-testid="stTab"]:not(:first-child),
+[data-testid="stTab"]:not(:first-child) p{color:#8dbcf5;font-weight:600}
 [data-testid="stTab"]:not(:first-child)::after{content:"AI";margin-left:8px;
   font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:1px 7px;border-radius:999px;
   background:var(--mo-blue);color:#06101f}
@@ -221,7 +224,8 @@ h1,h2,h3,h4{letter-spacing:-.01em}
   .mo-tl{flex-direction:column;align-items:stretch;padding-top:6px}
   .mo-tl-stop,.mo-tl-stop.first,.mo-tl-stop.last{flex:none;width:auto;flex-direction:row;align-items:center;gap:12px}
   .mo-tl-stop .lab,.mo-tl-stop.first .lab,.mo-tl-stop.last .lab{margin-top:0;text-align:left}
-  .mo-tl-seg{flex:none;height:auto;min-height:46px;margin-left:6.5px;border-left:3px solid var(--mo-route,var(--mo-opt));
+  .mo-tl-seg{flex:none;height:auto;min-height:46px;margin-left:6.5px;
+    border-left:3px solid var(--mo-route,var(--mo-opt));
     padding-left:22px;display:flex;align-items:center}
   .mo-tl-seg::before{display:none}
   .mo-tl-seg span{position:static;margin:0}
@@ -337,7 +341,8 @@ def badge(status: str, text: str) -> str:
 
 
 def status_card(label: str, badge_html: str, sub: str, tip: str = "") -> str:
-    return (f'<div class="mo-kpi" title="{html.escape(tip)}"><div class="lbl">{html.escape(label)}</div>{badge_html}'
+    return (f'<div class="mo-kpi" title="{html.escape(tip)}">'
+            f'<div class="lbl">{html.escape(label)}</div>{badge_html}'
             f'<div class="sub">{html.escape(sub)}</div></div>')
 
 
@@ -571,8 +576,9 @@ with tab_voyage:
             "Fuel EUR": round(leg.fuel_cost_eur), "ETS EUR": round(leg.ets_cost_eur),
         } for name, leg in zip(legs, best.legs, strict=True)]), hide_index=True, width="stretch")
     st.markdown('<div class="mo-cta"><div><b>Need this as a regulatory brief?</b><span>Open the '
-                '<b style="display:inline">AI report</b> tab: Claude writes a compliance summary of this voyage '
-                '(EU ETS, FuelEU, CII, ISO 14083) and every figure in it is checked against the optimizer.'
+                '<b style="display:inline">AI report</b> tab: Claude writes a compliance summary of this '
+                'voyage (EU ETS, FuelEU, CII, ISO 14083) and every figure in it is checked against the '
+                'optimizer.'
                 '</span></div></div>', unsafe_allow_html=True)
 
 NO_KEY = "Enter your Anthropic API key in the sidebar"
