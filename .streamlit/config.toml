@@ -1,4 +1,4 @@
-# Theme of app/streamlit_app.py: formal navy dark mode, white text, blue accents, orange routes.
+# Theme of app/streamlit_app.py: formal navy dark mode, white text, blue accents, blue and purple routes.
 # Colours mirror maritime_optimizer.viz.theme.NAVY (charts are re-coloured with the same tokens).
 [theme]
 base = "dark"

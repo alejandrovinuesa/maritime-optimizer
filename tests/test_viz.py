@@ -42,7 +42,7 @@ def test_streamlit_app_runs(graph):
     assert not at.exception
     hero = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-hero"'))
     assert "Valencia" in hero and "Rotterdam" in hero
-    assert len(at.metric) == 6
+    assert len(at.metric) == 4 and sum("mo-kpi" in m.value for m in at.markdown) == 2   # KPI cards + status badges
     at.sidebar.toggle[0].set_value(True).run()               # Suez vs Cape comparison
     assert not at.exception
 

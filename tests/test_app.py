@@ -26,7 +26,7 @@ def test_voyage_tab_renders_without_key(graph, monkeypatch):
     monkeypatch.delenv("MARITIME_OPT_ALLOW_SERVER_KEY", raising=False)
     at = run_app()
     assert not at.exception
-    assert [m.label for m in at.metric][:2] == ["Voyage cost", "Optimal speed"]
+    assert [m.label for m in at.metric][:2] == ["Cost", "Speed"]
     assert "Enter your Anthropic API key" in texts(at.info)
     assert at.chat_input[0].disabled
 
@@ -90,8 +90,21 @@ def test_fueleu_deficit_note_and_out_of_scope_voyage(graph, monkeypatch):
     note = texts(at.warning)
     assert "estimated penalty" in note and "Pooling, banking and borrowing" in note
     at = run_app(origin="AEJEA", destination="BRSSZ")  # no EU port: FuelEU does not apply
-    fueleu = next(m for m in at.metric if m.label == "FuelEU")
-    assert fueleu.value == "n/a" and "estimated penalty" not in texts(at.warning)
+    fueleu = next(m.value for m in at.markdown if "mo-kpi" in m.value and ">FuelEU<" in m.value)
+    assert "Not applicable" in fueleu and "estimated penalty" not in texts(at.warning)
+
+
+def test_headline_and_status_badges(graph):
+    at = run_app()                                   # Valencia → Rotterdam on HFO
+    markdown = [m.value for m in at.markdown]
+    headline = next(m for m in markdown if m.startswith('<div class="mo-headline"'))
+    assert "Optimal route" in headline and "EUR" in headline
+    assert any("mo-badge" in m and "Deficit" in m for m in markdown)       # FuelEU deficit badge
+    assert any("mo-badge" in m and "· " in m and ">CII rating<" in m for m in markdown)
+    at = run_app(origin="ESVLC", destination="SGSIN")
+    at.sidebar.toggle[0].set_value(True).run()       # Suez vs Cape: headline states the saving
+    headline = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-headline"'))
+    assert "saves" in headline and " days vs " in headline and "%" in headline
 
 
 def test_query_params_preset_the_scenario(graph):
