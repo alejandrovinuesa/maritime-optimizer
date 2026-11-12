@@ -146,6 +146,7 @@ h1,h2,h3,h4{letter-spacing:-.01em}
   text-transform:uppercase;
   color:var(--mo-ink2)}
 [data-testid="stMetric"] [data-testid="stIconMaterial"]{color:var(--mo-blue)}
+[data-testid="stMetricDelta"]{font-size:12.5px}
 [data-testid="stMetricValue"]{font-size:clamp(1rem,1.3vw,1.35rem);font-weight:600;color:var(--mo-ink)}
 
 /* itinerary: a timeline, stops on a line, distance and speed above each stretch */
@@ -209,11 +210,20 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 .mo-cta b{display:block;font-size:15px;color:var(--mo-ink);margin-bottom:2px}
 .mo-cta span{font-size:13.5px;color:var(--mo-ink2)}
 
-@media (max-width:700px){
+@media (max-width:767px){
   .block-container{padding:3.2rem 1rem 2rem}
-  .mo-hero{padding:16px 16px 12px}
-  .mo-route{font-size:24px;margin-bottom:12px}
-  .mo-spec{padding-right:14px;margin-right:14px}
+  .mo-hero{padding:14px 16px 12px;margin-bottom:12px}
+  .mo-route{font-size:24px}
+  /* header metadata as compact running text, so the headline below shows without scrolling */
+  .mo-specs{display:block;font-size:13px;line-height:1.55}
+  .mo-spec,.mo-spec:last-child{display:inline;border:0;padding:0;margin:0}
+  .mo-spec.k-type,.mo-spec.k-euaprice{display:none}
+  .mo-spec span{display:none;font-size:13px;letter-spacing:0;text-transform:none;color:var(--mo-muted)}
+  .mo-spec.k-deadline span{display:inline}
+  .mo-spec.k-deadline span::after{content:" "}
+  .mo-spec b{font-size:13px;font-weight:500;color:var(--mo-ink2)}
+  .mo-spec:not(:last-child) b::after{content:" · ";color:var(--mo-muted);white-space:pre}
+  .mo-route{margin-bottom:8px}
   .mo-headline{padding:14px 16px}
   .mo-headline .sep{display:none}
   /* KPI cards two per row instead of six stacked full-width */
@@ -456,7 +466,8 @@ st.markdown(
     f'<div class="mo-hero"><div class="mo-eyebrow">Optimized voyage</div>'
     f'<div class="mo-route">{html.escape(ports[origin].name)}<span class="arrow">→</span>'
     f'{html.escape(ports[destination].name)}</div><div class="mo-specs">'
-    + "".join(f'<div class="mo-spec"><span>{k}</span><b>{html.escape(v)}</b></div>' for k, v in specs)
+    + "".join(f'<div class="mo-spec k-{k.lower().replace(" ", "")}"><span>{k}</span>'
+              f'<b>{html.escape(v)}</b></div>' for k, v in specs)
     + "</div></div>", unsafe_allow_html=True)
 
 if origin == destination:
@@ -501,12 +512,15 @@ tab_voyage, tab_report, tab_chat = st.tabs(
 
 # ------------------------------------------------------------------ voyage tab
 with tab_voyage:
-    cols = st.columns([1.1, 1, 1.1, 1, 1.1, 1.3])   # the status cards need more room
+    cols = st.columns([1.05, 0.9, 1.3, 0.9, 1.05, 1.5])   # the status cards need more room
     kpi = dict(height="stretch")
     cols[0].metric("Cost", eur(best.total_cost_eur), icon=":material/euro:", **kpi)
     cols[1].metric("Speed", f"{mean_speed(best):.2f} kn", icon=":material/speed:", **kpi)
+    spare = tmax - best.total_transit_hours
+    binding = spare < 0.5          # the deadline, not cost, is what sets the speed
     cols[2].metric("Transit", f"{best.total_transit_hours / 24:.1f} days",
-                   f"{num(tmax - best.total_transit_hours)} h spare", delta_color="off", delta_arrow="off",
+                   "Deadline binding" if binding else f"{num(spare)} h spare",
+                   delta_color="orange" if binding else "off", delta_arrow="off",
                    icon=":material/schedule:", **kpi)
     cols[3].metric("CO₂", f"{num(best.total_co2_combustion_tons)} t", icon=":material/co2:", **kpi)
     cii = best.cii_rating.value
@@ -563,11 +577,11 @@ with tab_voyage:
             f'</span><span>{html.escape(k)}</span><b>{eur(v)}</b><small>{v / total:.0%}</small></div>'
             for k, v in parts.items())
         st.markdown(f'<div class="mo-costs">{rows_html}</div>', unsafe_allow_html=True)
-    with right, st.container(border=True, height="stretch"):
+    with right, st.container(border=True):
         card_title("CO₂ by stretch")
         segs = stretches(graph, best)
         names = [f"{graph.ports[s['origin']].name} → {graph.ports[s['destination']].name}" for s in segs]
-        chart(hbar(names, [s["co2"] for s in segs], "t", ",.0f"))
+        chart(hbar(names, [s["co2"] for s in segs], "t", ",.0f", x_title="t CO₂"))
     legs = [f"{graph.ports[leg.origin].name} → {graph.ports[leg.destination].name}" for leg in best.legs]
     with st.expander("Leg-by-leg data", icon=":material/table_rows:"):
         st.dataframe(pd.DataFrame([{
