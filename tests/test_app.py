@@ -118,3 +118,12 @@ def test_query_params_preset_the_scenario(graph):
     assert at.sidebar.toggle[0].value is True                     # Suez vs Cape comparison on
     assert at.sidebar.selectbox[2].value == "panamax_bulker"            # invalid → default vessel
 
+
+def test_transit_card_deadline_binding_chip(graph):
+    at = run_app()                                   # Valencia → Rotterdam: slack to spare
+    transit = next(m for m in at.metric if m.label == "Transit")
+    assert transit.delta.endswith("h spare")
+    at = run_app(origin="ESVLC", destination="SGSIN")
+    at.sidebar.toggle[0].set_value(True).run()       # the Cape route sails at the deadline
+    transit = next(m for m in at.metric if m.label == "Transit")
+    assert transit.delta == "Deadline binding"

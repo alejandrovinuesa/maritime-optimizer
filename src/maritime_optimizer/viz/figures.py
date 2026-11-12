@@ -7,6 +7,7 @@ with :func:`apply_theme`.
 """
 
 import math
+import re
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import plotly.graph_objects as go
@@ -95,6 +96,79 @@ def _gc_arc(lat1: float, lon1: float, lat2: float, lon2: float, n: int) -> List[
     return pts
 
 
+_LABEL_CHAR_PX, _LABEL_LINE_PX = 7.4, 17     # rough size of 13 px label text
+# Candidate directions (degrees, 0 = east, y up), nearest and most natural first: below, above, sides.
+_LABEL_ANGLES = (270, 90, 0, 180, 300, 240, 60, 120, 330, 210, 30, 150)
+_LABEL_RADII_PX = (46, 70, 100, 140, 190)
+
+
+def _land_hits(points: List[Tuple[float, float]]) -> bool:
+    """True when any (lon, lat) is on mapped land; False when the land data is unavailable."""
+    try:
+        from ..routing import get_land_detector
+        det = get_land_detector()
+        if not det.using_geopandas:
+            return False
+        import shapely
+        return det.tree.query(shapely.points(points), predicate="intersects").shape[1] > 0
+    except Exception:
+        return False
+
+
+def _place_labels(mids: Dict[str, Tuple[float, float]], texts: Dict[str, str],
+                  route_pts: Dict[str, Tuple[List[float], List[float]]],
+                  lon_rng: Tuple[float, float], lat_rng: Tuple[float, float],
+                  px_w: float, px_h: float) -> Dict[str, Tuple[float, float, str]]:
+    """Anchor (lon, lat) and text position for each route label, in open water.
+
+    The anchor is offset from the route's midpoint, so a leader line can join them. A spot is
+    accepted when its text box stays inside the map, touches no route line, no other label and no
+    mapped land; the nearest such spot wins. Falls back to the nearest spot clear of the routes.
+    """
+    deg_px = max((lon_rng[1] - lon_rng[0]) / px_w, (lat_rng[1] - lat_rng[0]) / px_h)
+    pts = [(lo, la) for lons, lats in route_pts.values() for lo, la in zip(lons, lats, strict=True)]
+    margin, pad = 8 * deg_px, 6 * deg_px
+    boxes: List[Tuple[float, float, float, float]] = []
+    out: Dict[str, Tuple[float, float, str]] = {}
+    for name, mid in mids.items():
+        lines = re.sub(r"<[^>]+>", "", texts[name].replace("<br>", "\n")).split("\n")
+        bw = (max(len(x) for x in lines) * _LABEL_CHAR_PX + 8) * deg_px
+        bh = (len(lines) * _LABEL_LINE_PX + 4) * deg_px
+        choice, fallback = None, None
+        for r in _LABEL_RADII_PX:
+            for ang in _LABEL_ANGLES:
+                dx, dy = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+                ax, ay = mid[0] + r * dx * deg_px, mid[1] + r * dy * deg_px
+                if abs(dy) >= abs(dx) and dy > 0:
+                    pos, box = "top center", (ax - bw / 2, ay, ax + bw / 2, ay + bh)
+                elif abs(dy) >= abs(dx):
+                    pos, box = "bottom center", (ax - bw / 2, ay - bh, ax + bw / 2, ay)
+                elif dx > 0:
+                    pos, box = "middle right", (ax, ay - bh / 2, ax + bw, ay + bh / 2)
+                else:
+                    pos, box = "middle left", (ax - bw, ay - bh / 2, ax, ay + bh / 2)
+                x0, y0, x1, y1 = box
+                if (x0 < lon_rng[0] + margin or x1 > lon_rng[1] - margin
+                        or y0 < lat_rng[0] + margin or y1 > lat_rng[1] - margin):
+                    continue
+                if any(x0 - pad <= lo <= x1 + pad and y0 - pad <= la <= y1 + pad for lo, la in pts):
+                    continue
+                if any(x0 < b[2] and x1 > b[0] and y0 < b[3] and y1 > b[1] for b in boxes):
+                    continue
+                fallback = fallback or (ax, ay, pos, box)
+                grid = [(x0 + (x1 - x0) * i / 4, y0 + (y1 - y0) * j / 2) for i in range(5) for j in range(3)]
+                if not _land_hits(grid):
+                    choice = (ax, ay, pos, box)
+                    break
+            if choice:
+                break
+        ax, ay, pos, box = choice or fallback or (mid[0], mid[1] + 40 * deg_px, "top center",
+                                                  (mid[0] - bw / 2, mid[1], mid[0] + bw / 2, mid[1] + bh))
+        boxes.append(box)
+        out[name] = (ax, ay, pos)
+    return out
+
+
 def route_map(graph: MaritimeGraph, routes: Dict[str, VoyageResult],
               slots: Optional[Dict[str, int]] = None, height: int = 420,
               primary: Optional[str] = None, labels: Optional[Dict[str, str]] = None,
@@ -107,7 +181,7 @@ def route_map(graph: MaritimeGraph, routes: Dict[str, VoyageResult],
     """
     slots = slots or {name: i for i, name in enumerate(routes)}
     fig = go.Figure()
-    lons_all, lats_all, mids = [], [], {}
+    lons_all, lats_all, mids, pts = [], [], {}, {}
     for name, r in routes.items():
         lons, lats, mid = [], [], None
         total = sum(leg.distance_nm for leg in r.legs) or 1.0
@@ -135,20 +209,7 @@ def route_map(graph: MaritimeGraph, routes: Dict[str, VoyageResult],
                       color=T["series"][slots[name]]),
             meta={"slot": slots[name]}))
         mids[name] = mid
-    # Route labels go on the inner side of each route (towards the centre of all routes), clear of
-    # the map edge and of the line itself.
-    if labels:
-        centre_lat = sum(lats_all) / len(lats_all)
-        for name, mid in mids.items():
-            if name in labels and mid:
-                below = mid[1] < centre_lat
-                # An empty line on the route side lifts the text clear of the line.
-                text = f"{labels[name]}<br>" if below else f"<br>{labels[name]}"
-                fig.add_trace(go.Scattergeo(
-                    lon=[mid[0]], lat=[mid[1]], mode="text", text=[text], hoverinfo="skip",
-                    textposition="top center" if below else "bottom center",
-                    showlegend=False, textfont=dict(color=T["series"][slots[name]], size=13),
-                    meta={"slot": slots[name], "role": "label"}))
+        pts[name] = (lons, lats)
         # Invisible but generous hover targets on every node of the route.
         cum, hover = 0.0, []
         for i, code in enumerate(r.route_ports):
@@ -202,6 +263,22 @@ def route_map(graph: MaritimeGraph, routes: Dict[str, VoyageResult],
         bgcolor="rgba(0,0,0,0)",
         lonaxis_range=[lon_c - lon_span / 2, lon_c + lon_span / 2],
         lataxis_range=[max(-85, lat_c - lat_span / 2), min(85, lat_c + lat_span / 2)])
+    if labels:
+        lon_rng = (lon_c - lon_span / 2, lon_c + lon_span / 2)
+        lat_rng = (max(-85, lat_c - lat_span / 2), min(85, lat_c + lat_span / 2))
+        shown_labels = {n: labels[n] for n in routes if n in labels and mids.get(n)}
+        placed = _place_labels({n: mids[n] for n in shown_labels}, shown_labels, pts, lon_rng, lat_rng,
+                               950 if aspect >= 2 else 340, height - 50)
+        for name, (ax, ay, pos) in placed.items():
+            color = T["series"][slots[name]]
+            fig.add_trace(go.Scattergeo(     # leader line from the route to its label
+                lon=[mids[name][0], ax], lat=[mids[name][1], ay], mode="lines+markers", hoverinfo="skip",
+                showlegend=False, line=dict(width=1.2, dash="dot", color=color),
+                marker=dict(size=[6, 0], color=color), meta={"slot": slots[name]}))
+            fig.add_trace(go.Scattergeo(
+                lon=[ax], lat=[ay], mode="text", text=[shown_labels[name]], hoverinfo="skip",
+                textposition=pos, showlegend=False, textfont=dict(color=color, size=13),
+                meta={"slot": slots[name], "role": "label"}))
     fig.update_layout(_layout(height, margin=dict(l=0, r=0, t=0, b=0),
                               showlegend=len(routes) > 1))
     return fig
@@ -243,7 +320,7 @@ def cost_breakdown(rows: Sequence[Tuple[str, VoyageResult]], narrow: bool = Fals
 
 def hbar(labels: Sequence[str], values: Sequence[float], unit: str, fmt: str = ",.2f",
          ref: Optional[float] = None, ref_label: str = "", slot: int = 0,
-         x_from_zero: bool = True) -> go.Figure:
+         x_from_zero: bool = True, x_title: str = "") -> go.Figure:
     """One series of horizontal bars with the value at the tip and an optional reference line."""
     text = [f"{v:{fmt}} {unit}".replace(",", THIN) for v in values]
     fig = go.Figure(go.Bar(
@@ -253,8 +330,10 @@ def hbar(labels: Sequence[str], values: Sequence[float], unit: str, fmt: str = "
         hovertemplate="<b>%{y}</b><br>%{x:" + fmt + "} " + unit + "<extra></extra>"))
     n = len(labels)
     xmax = max(list(values) + ([ref] if ref else [])) * 1.18
-    layout = _layout(48 + n * 40, bargap=1 - BAR_PX / 40, margin=dict(l=8, r=24, t=8, b=8))
-    layout["xaxis"].update(range=[0 if x_from_zero else None, xmax], showline=False)
+    layout = _layout(40 + n * 40 + (26 if x_title else 0), bargap=1 - BAR_PX / 40,
+                     margin=dict(l=8, r=24, t=8, b=8))
+    layout["xaxis"].update(range=[0 if x_from_zero else None, xmax], showline=False,
+                           **({"title": dict(text=x_title, standoff=6)} if x_title else {}))
     layout["yaxis"].update(autorange="reversed", showgrid=False)
     fig.update_layout(layout)
     if ref is not None:
