@@ -2,7 +2,7 @@
 
 **Regulation-aware route, speed and fuel optimization for ships under the EU ETS, FuelEU Maritime and MARPOL Annex VI (CII/EEXI), with ISO 14083 emissions reporting.**
 
-[![CI](https://github.com/alexvinuesa22-debug/maritime-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/alexvinuesa22-debug/maritime-optimizer/actions/workflows/ci.yml)
+[![CI](https://github.com/alejandrovinuesa/maritime-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/alejandrovinuesa/maritime-optimizer/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
@@ -26,12 +26,12 @@ Every regulatory number lives in a CSV that cites its legal source, so the model
 
 **[Open the live app](https://maritime-optimizer.streamlit.app)** · pick two ports, a deadline and a vessel and get the optimized voyage on a map; ask Claude for a compliance report or questions with your own API key ([details](#interactive-app)). Try [Valencia → Singapore, Suez vs Cape](https://maritime-optimizer.streamlit.app/?origin=ESVLC&destination=SGSIN&compare=1).
 
-**Live dashboards:** [E1](https://alexvinuesa22-debug.github.io/maritime-optimizer/e1.html) · [E2](https://alexvinuesa22-debug.github.io/maritime-optimizer/e2.html) · [E3](https://alexvinuesa22-debug.github.io/maritime-optimizer/e3.html) · [E4](https://alexvinuesa22-debug.github.io/maritime-optimizer/e4.html) · [E5](https://alexvinuesa22-debug.github.io/maritime-optimizer/e5.html)
+**Live dashboards:** [E1](https://alejandrovinuesa.github.io/maritime-optimizer/e1.html) · [E2](https://alejandrovinuesa.github.io/maritime-optimizer/e2.html) · [E3](https://alejandrovinuesa.github.io/maritime-optimizer/e3.html) · [E4](https://alejandrovinuesa.github.io/maritime-optimizer/e4.html) · [E5](https://alejandrovinuesa.github.io/maritime-optimizer/e5.html)
 
 ## Install
 
 ```bash
-git clone https://github.com/alexvinuesa22-debug/maritime-optimizer.git
+git clone https://github.com/alejandrovinuesa/maritime-optimizer.git
 cd maritime-optimizer
 pip install -e .
 maritime-opt doctor        # downloads Natural Earth land polygons (~1 MB) and runs a test voyage
@@ -80,13 +80,13 @@ pip install -e ".[app]"
 streamlit run app/streamlit_app.py             # interactive app: ports, deadline, vessel → optimized voyage on a map
 ```
 
-[![Suez vs Cape of Good Hope dashboard](docs/img/dashboard_e5.png)](https://alexvinuesa22-debug.github.io/maritime-optimizer/e5.html)
+[![Suez vs Cape of Good Hope dashboard](docs/img/dashboard_e5.png)](https://alejandrovinuesa.github.io/maritime-optimizer/e5.html)
 
 Each HTML dashboard has KPI tiles (cost, speed, CO₂, CII rating, FuelEU status, ISO 14083 intensity), the route map, the cost breakdown and scenario-specific charts. Every chart has hover tooltips and a data table, light and dark mode follow the system setting, and the data notice is printed in the footer. Pre-built copies live in [`examples/dashboards/`](examples/dashboards/) and are published on GitHub Pages by [`pages.yml`](.github/workflows/pages.yml).
 
 | | |
 |---|---|
-| [![E3](docs/img/dashboard_e3.png)](https://alexvinuesa22-debug.github.io/maritime-optimizer/e3.html) **E3** fuel choice | [![E4](docs/img/dashboard_e4.png)](https://alexvinuesa22-debug.github.io/maritime-optimizer/e4.html) **E4** carbon price |
+| [![E3](docs/img/dashboard_e3.png)](https://alejandrovinuesa.github.io/maritime-optimizer/e3.html) **E3** fuel choice | [![E4](docs/img/dashboard_e4.png)](https://alejandrovinuesa.github.io/maritime-optimizer/e4.html) **E4** carbon price |
 
 ## Interactive app
 
@@ -135,7 +135,7 @@ maritime-opt ask "Suez or the Cape for the LR2 tanker from Singapore to Rotterda
 maritime-opt report E3 --out e3_report.html
 ```
 
-Example: [the E5 report (Suez vs Cape)](https://alexvinuesa22-debug.github.io/maritime-optimizer/reports/e5_report.html), generated once by the maintainer and kept in [`examples/reports/`](examples/reports/e5_report.html), so you can see the output without an API key.
+Example: [the E5 report (Suez vs Cape)](https://alejandrovinuesa.github.io/maritime-optimizer/reports/e5_report.html), generated once by the maintainer and kept in [`examples/reports/`](examples/reports/e5_report.html), so you can see the output without an API key.
 
 **Regulatory update.** Claude reads a new legal text next to the regulatory CSVs and proposes cell changes, each with the article and a verbatim quote. The code checks every proposal (table and row exist, the current value matches, the quote is in the source) and writes `proposal.md` plus a `proposal.diff` of the changes that pass. It never edits the CSVs: a person reviews and runs `git apply`.
 
