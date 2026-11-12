@@ -58,8 +58,12 @@ NAVY = {
 # Status colours are reserved for good/bad meaning and always ship with an icon + label.
 STATUS = {"good": "#0ca30c", "warning": "#fab219", "serious": "#ec835a", "critical": "#d03b3b"}
 
-# Fixed entity → slot assignments, shared by every chart.
-COST_SLOTS = {"Fuel": 0, "EU ETS": 1, "Time charter": 2, "Canal tolls": 3, "FuelEU penalty": 4}
-CORRIDOR_SLOTS = {"suez": 0, "cape": 1}
+# Route colours: one pair for "optimal" and "alternative", never reused for anything else.
+# Cost categories use a disjoint set of slots (orange, pink, green, amber, red), so a colour
+# means one thing on every chart: blue/purple are routes, the rest are cost terms.
+ROUTE_SLOTS = {"optimal": 0, "alternative": 6}
+COST_SLOTS = {"Fuel": 1, "EU ETS": 4, "Time charter": 2, "Canal tolls": 3, "FuelEU penalty": 7}
+# The static dashboards colour by corridor (they have no "optimal" notion), from the route pair.
+CORRIDOR_SLOTS = {"suez": ROUTE_SLOTS["optimal"], "cape": ROUTE_SLOTS["alternative"]}
 
 FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif'

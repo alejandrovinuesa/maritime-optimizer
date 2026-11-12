@@ -22,6 +22,14 @@ BAR_PX = 22          # bar thickness (spec: <= 24 px)
 
 # ---------------------------------------------------------------- formatting
 
+THIN = " "     # thin space: thousands separator everywhere
+
+
+def num(x: float, digits: int = 0) -> str:
+    """Number with thin-space thousands separators: 1 234 567, 62.5."""
+    return f"{x:,.{digits}f}".replace(",", THIN)
+
+
 def eur(x: float) -> str:
     """Compact euro amount: 950 EUR, 12.9k EUR, 2.47M EUR."""
     a = abs(x)
@@ -29,7 +37,7 @@ def eur(x: float) -> str:
         return f"{x / 1e6:.2f}M EUR"
     if a >= 1e4:
         return f"{x / 1e3:.1f}k EUR"
-    return f"{x:,.0f} EUR"
+    return f"{num(x)} EUR"
 
 
 def mean_speed(r: VoyageResult) -> float:
