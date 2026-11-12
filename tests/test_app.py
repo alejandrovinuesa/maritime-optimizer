@@ -66,7 +66,7 @@ def test_report_and_chat_use_the_session_key(graph, monkeypatch):
     monkeypatch.setattr(report_mod, "write_report", fake_report)
     monkeypatch.setattr(assistant, "ask", fake_ask)
     at = run_app(anthropic_key="sk-ant-user-test")
-    next(b for b in at.button if b.label == "Generate AI report").click().run()
+    next(b for b in at.button if b.label == "Generate compliance report").click().run()
     assert not at.exception
     assert "Valencia to Rotterdam is compliant" in texts(at.markdown)
     assert "AI-generated content" in texts(at.warning)
