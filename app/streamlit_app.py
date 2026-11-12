@@ -9,6 +9,7 @@ ANTHROPIC_API_KEY is ignored unless MARITIME_OPT_ALLOW_SERVER_KEY=1 is set, so a
 deployment never spends the deployer's credit on visitors.
 """
 
+import base64
 import hashlib
 import html
 import json
@@ -28,10 +29,11 @@ from maritime_optimizer.compliance import (
 from maritime_optimizer.routing import is_canal_node, is_waypoint_node
 from maritime_optimizer.scenarios import build_request
 from maritime_optimizer.viz.figures import (
-    apply_theme, cost_breakdown, cost_components, eur, hbar, mean_speed, route_map,
+    apply_theme, cost_breakdown, cost_components, eur, hbar, mean_speed, num, route_map,
 )
 from maritime_optimizer.viz.html import DISCLAIMER
-from maritime_optimizer.viz.theme import COST_SLOTS, NAVY, STATUS
+from maritime_optimizer.viz.labels import fuel_label, vessel_label, vessel_type_label
+from maritime_optimizer.viz.theme import COST_SLOTS, NAVY, ROUTE_SLOTS, STATUS
 
 try:  # the AI features need the 'agents' extra
     import anthropic
@@ -48,68 +50,123 @@ except ImportError:
 PRICE_IN, PRICE_OUT = 4.0, 20.0
 
 P = NAVY
-BLUE, ORANGE = P["series"][0], P["series"][1]
-# Routes are drawn in orange. In the corridor comparison each corridor keeps its own colour
-# (Suez orange, Cape blue) whichever is cheaper: colour follows the entity, never the rank.
-ROUTE_SLOTS = {"Optimal route": 1, "Via Suez": 1, "Via the Cape": 0}
+BLUE = P["series"][0]
+# Two route colours, used by the map, its legend, the itinerary and the headline: the optimal
+# route is blue, the alternative purple. Cost terms use other slots (see viz.theme), so no colour
+# means two things.
+OPT_COLOR = P["series"][ROUTE_SLOTS["optimal"]]
+ALT_COLOR = P["series"][ROUTE_SLOTS["alternative"]]
+
+# Status → (colour, icon, label): colour never alone, always with an icon and a word.
+STATUS_STYLE = {"compliant": (STATUS["good"], "✓", "Compliant"),
+                "attention": (STATUS["warning"], "!", "Needs attention"),
+                "non_compliant": (STATUS["critical"], "✕", "Non-compliant"),
+                "info": (P["muted"], "i", "Information")}
+
+# A ship on a dotted route between two ports (inline SVG, no image file to host).
+LOGO_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">'
+            '<path d="M7 15Q20 4 33 15" stroke="#fff" stroke-opacity=".7" stroke-width="1.8" '
+            'stroke-dasharray="2 3" stroke-linecap="round"/><circle cx="7" cy="15" r="2.2" fill="#fff"/>'
+            '<circle cx="33" cy="15" r="2.2" fill="#fff"/>'
+            '<path d="M8.5 25.5H31.5L28 32H12Z" fill="#fff"/>'
+            '<rect x="13" y="20.5" width="12" height="5" fill="#fff"/>'
+            '<rect x="18.5" y="16.5" width="5" height="4" fill="#fff"/></svg>')
+LOGO = ('<img alt="Maritime Optimizer" width="28" height="28" src="data:image/svg+xml;base64,'
+        + base64.b64encode(LOGO_SVG.encode()).decode() + '">')
+LINKEDIN_URL = "https://www.linkedin.com/alejandrovinuesacano/"
 
 st.set_page_config(page_title="Maritime optimizer", page_icon="⚓", layout="wide",
-                   initial_sidebar_state="expanded")
+                   initial_sidebar_state="auto")   # auto: collapsed on phones so results show first
 
 # st.html (not st.markdown): blank lines inside a <style> would end a Markdown HTML block.
 st.html(f"""<style>
 :root{{--mo-page:{P["page"]};--mo-surface:{P["surface"]};--mo-border:{P["border"]};--mo-ink:{P["ink"]};
---mo-ink2:{P["ink2"]};--mo-muted:{P["muted"]};--mo-blue:{BLUE};--mo-orange:{ORANGE}}}
+--mo-ink2:{P["ink2"]};--mo-muted:{P["muted"]};--mo-blue:{BLUE};--mo-opt:{OPT_COLOR};--mo-alt:{ALT_COLOR}}}
 </style>""" + """<style>
 [data-testid="stHeader"]{background:transparent}
-[data-testid="stMainMenu"]{display:none}
+/* Streamlit chrome visitors should not see. stToolbar stays: it holds the sidebar toggle. */
+[data-testid="stMainMenu"],[data-testid="stAppDeployButton"],
+[data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none!important}
 .block-container{padding-top:1.8rem;max-width:1280px}
 h1,h2,h3,h4{letter-spacing:-.01em}
 
 /* sidebar */
 .mo-brand{display:flex;gap:12px;align-items:center;margin:4px 0 18px}
-.mo-brand .mark{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-weight:700;
+.mo-brand .mark{width:40px;height:40px;border-radius:9px;display:grid;place-items:center;font-weight:700;
   font-size:14px;color:#fff;background:linear-gradient(135deg,var(--mo-blue),#1f5fae);letter-spacing:.02em}
 .mo-brand b{display:block;font-size:16px;color:var(--mo-ink);font-weight:600}
-.mo-brand small{color:var(--mo-muted);font-size:12px}
-.mo-side{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mo-muted);
+.mo-brand small{color:var(--mo-ink2);font-size:12.5px}
+.mo-side{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mo-ink2);
   margin:18px 0 6px;padding-top:14px;border-top:1px solid var(--mo-border)}
 
 /* header */
 .mo-hero{position:relative;overflow:hidden;padding:22px 26px 20px;border-radius:12px;margin-bottom:18px;
   background:linear-gradient(180deg,#13223d,var(--mo-surface));border:1px solid var(--mo-border)}
 .mo-hero::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;
-  background:linear-gradient(90deg,var(--mo-blue),var(--mo-blue) 55%,var(--mo-orange))}
-.mo-eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mo-blue);font-weight:600}
+  background:linear-gradient(90deg,var(--mo-blue),transparent 70%)}
+.mo-eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mo-blue);font-weight:600}
 .mo-route{font-size:32px;font-weight:600;line-height:1.2;margin:6px 0 18px;color:var(--mo-ink)}
-.mo-route .arrow{color:var(--mo-orange);padding:0 10px;font-weight:400}
+.mo-route .arrow{color:var(--mo-muted);padding:0 10px;font-weight:400}
 .mo-specs{display:flex;flex-wrap:wrap;gap:0}
-.mo-spec{padding:0 22px 0 0;margin:0 22px 6px 0;border-right:1px solid var(--mo-border)}
+.mo-spec{padding:0 16px 0 0;margin:0 16px 6px 0;border-right:1px solid var(--mo-border)}
 .mo-spec:last-child{border-right:0}
-.mo-spec span{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--mo-muted)}
+.mo-spec span{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mo-ink2)}
 .mo-spec b{font-size:14px;font-weight:500;color:var(--mo-ink)}
 
-/* KPI cards */
-[data-testid="stMetric"]{background:var(--mo-surface);border:1px solid var(--mo-border);border-radius:10px;
-  padding:14px 16px}
-[data-testid="stMetricLabel"] p{font-size:11px;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--mo-muted)}
-[data-testid="stMetric"] [data-testid="stIconMaterial"]{color:var(--mo-blue)}
-[data-testid="stMetricValue"]{font-size:clamp(1.05rem,1.55vw,1.5rem);font-weight:600;color:var(--mo-ink)}
+/* headline: the result, before the supporting numbers */
+.mo-headline{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;padding:18px 24px 20px;
+  border-radius:12px;margin-bottom:16px;border:1px solid var(--mo-border);
+  border-left:5px solid var(--mo-route,var(--mo-opt));
+  background:linear-gradient(90deg,color-mix(in srgb,var(--mo-route,var(--mo-opt)) 16%,var(--mo-surface)),
+  var(--mo-surface) 75%)}
+.mo-headline .lead{flex:0 0 100%;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mo-ink2);font-weight:600}
+.mo-headline .big{font-size:clamp(1.3rem,2.6vw,1.9rem);font-weight:700;color:var(--mo-ink);line-height:1.25}
+.mo-headline .big small{font-size:.6em;font-weight:500;color:var(--mo-ink2);margin-left:6px}
+.mo-headline .sep{color:var(--mo-muted);font-size:1.3rem}
+.mo-headline .meta{font-size:1.05rem;color:var(--mo-ink2)}
+.mo-headline .chip{display:inline-flex;align-items:center;gap:9px}
+.mo-headline .chip i{width:12px;height:12px;border-radius:3px;background:var(--mo-route,var(--mo-opt))}
 
-/* itinerary */
-.mo-itin{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:16px 0 10px}
-.mo-stop{padding:8px 13px;border-radius:8px;border:1px solid var(--mo-border);background:var(--mo-surface);
-  line-height:1.2}
-.mo-stop b{display:block;font-size:13.5px;font-weight:600;color:var(--mo-ink)}
-.mo-stop small{color:var(--mo-muted);font-size:11px;letter-spacing:.04em}
-.mo-stop.end{border-color:var(--mo-blue);box-shadow:inset 3px 0 0 var(--mo-blue)}
-.mo-stop.canal{border-style:dashed}
-.mo-seg{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--mo-ink2);
-  min-width:78px}
-.mo-seg::before{content:"";display:block;width:100%;height:2px;background:var(--mo-route,var(--mo-orange));border-radius:2px;
-  margin-bottom:4px}
+/* KPI cards */
+[data-testid="stMetric"],.mo-kpi{min-height:124px;background:var(--mo-surface);
+  border:1px solid var(--mo-border);border-radius:10px;
+  padding:14px 16px}
+.mo-kpi{height:100%;min-height:124px;box-sizing:border-box;padding:14px 12px}
+.mo-kpi .lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mo-ink2);
+  margin-bottom:9px;white-space:nowrap}
+.mo-kpi .sub{font-size:12.5px;color:var(--mo-ink2);margin-top:8px;white-space:nowrap}
+.mo-badge{display:inline-flex;align-items:center;gap:7px;padding:4px 11px 4px 5px;border-radius:999px;
+  font-weight:600;font-size:12.5px;line-height:1.25;border:1px solid;
+  color:color-mix(in srgb,var(--c) 55%,#fff)!important}
+.mo-badge i{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;color:#0b1424;
+  font-style:normal;font-size:11px;font-weight:800}
+[data-testid="stMetricLabel"] p{white-space:nowrap;font-size:12px;letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--mo-ink2)}
+[data-testid="stMetric"] [data-testid="stIconMaterial"]{color:var(--mo-blue)}
+[data-testid="stMetricValue"]{font-size:clamp(1rem,1.3vw,1.35rem);font-weight:600;color:var(--mo-ink)}
+
+/* itinerary: a timeline, stops on a line, distance and speed above each stretch */
+.mo-tl{display:flex;align-items:flex-start;padding:26px 4px 4px;margin-bottom:6px}
+.mo-tl-stop{flex:0 0 16px;width:16px;display:flex;flex-direction:column;align-items:center}
+.mo-tl-stop.first{align-items:flex-start}
+.mo-tl-stop.last{align-items:flex-end}
+.mo-tl-stop .dot{width:16px;height:16px;border-radius:50%;box-sizing:border-box;flex:none;
+  border:3px solid var(--mo-route,var(--mo-opt));background:var(--mo-surface)}
+.mo-tl-stop.first .dot,.mo-tl-stop.last .dot{background:var(--mo-route,var(--mo-opt))}
+.mo-tl-stop.canal .dot{border-style:dashed}
+.mo-tl-stop .lab{margin-top:9px;white-space:nowrap;text-align:center;line-height:1.3}
+.mo-tl-stop.first .lab{text-align:left}
+.mo-tl-stop.last .lab{text-align:right}
+.mo-tl-stop .lab b{display:block;font-size:14.5px;font-weight:600;color:var(--mo-ink)}
+.mo-tl-stop .lab small{font-size:12px;letter-spacing:.04em;color:var(--mo-ink2)}
+.mo-tl-seg{flex:1 1 0;min-width:70px;height:16px;position:relative}
+.mo-tl-seg::before{content:"";position:absolute;left:0;right:0;top:6.5px;height:3px;border-radius:2px;
+  background:var(--mo-route,var(--mo-opt))}
+.mo-tl-seg span{position:absolute;bottom:100%;left:0;right:0;margin-bottom:4px;text-align:center;
+  font-size:12.5px;color:var(--mo-ink2);white-space:nowrap}
 
 /* cards and lists */
 .mo-card-title{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
@@ -125,7 +182,7 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 .mo-status .head{display:flex;align-items:center;gap:9px;font-weight:600}
 .mo-status .dot{width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;
   color:#fff;font-size:12px;font-weight:700}
-.mo-status .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mo-muted);
+.mo-status .lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mo-ink2);
   margin:4px 0 8px 29px}
 .mo-status p{font-size:13px;margin:0;color:var(--mo-ink2)}
 .mo-empty{padding:26px 28px;border:1px solid var(--mo-border);border-radius:12px;background:var(--mo-surface);
@@ -133,9 +190,46 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 .mo-empty b{display:block;font-size:16px;font-weight:600;margin-bottom:6px;color:var(--mo-ink)}
 .mo-empty p{margin:0;color:var(--mo-ink2);font-size:13.5px}
 .mo-empty a{color:#6aa8f0}
-.mo-foot{font-size:11.5px;color:var(--mo-muted);margin-top:32px;border-top:1px solid var(--mo-border);
-  padding-top:14px;line-height:1.55}
-.mo-foot b{color:var(--mo-ink2)}
+.mo-foot{font-size:12.5px;color:var(--mo-ink2);margin-top:32px;border-top:1px solid var(--mo-border);
+  padding-top:14px;line-height:1.6}
+.mo-foot a{color:#8dbcf5;text-decoration:underline;text-underline-offset:2px}
+.mo-by{margin-top:8px;color:var(--mo-ink2)}
+.mo-foot b{color:var(--mo-ink)}
+
+/* the two AI tabs stand out: accent colour and an AI pill */
+[data-testid="stTab"]{display:flex;align-items:center}
+[data-testid="stTab"]:not(:first-child),
+[data-testid="stTab"]:not(:first-child) p{color:#8dbcf5;font-weight:600}
+[data-testid="stTab"]:not(:first-child)::after{content:"AI";margin-left:8px;
+  font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:1px 7px;border-radius:999px;
+  background:var(--mo-blue);color:#06101f}
+.mo-cta{display:flex;gap:16px;align-items:center;margin-top:14px;padding:16px 20px;border-radius:12px;
+  border:1px solid var(--mo-border);border-left:4px solid var(--mo-blue);
+  background:linear-gradient(90deg,#15284a,var(--mo-surface) 80%)}
+.mo-cta b{display:block;font-size:15px;color:var(--mo-ink);margin-bottom:2px}
+.mo-cta span{font-size:13.5px;color:var(--mo-ink2)}
+
+@media (max-width:700px){
+  .block-container{padding:3.2rem 1rem 2rem}
+  .mo-hero{padding:16px 16px 12px}
+  .mo-route{font-size:24px;margin-bottom:12px}
+  .mo-spec{padding-right:14px;margin-right:14px}
+  .mo-headline{padding:14px 16px}
+  .mo-headline .sep{display:none}
+  /* KPI cards two per row instead of six stacked full-width */
+  [data-testid="stHorizontalBlock"]:has(.mo-kpi){flex-wrap:wrap!important;gap:.6rem!important}
+  [data-testid="stHorizontalBlock"]:has(.mo-kpi)>div{flex:1 1 calc(50% - .6rem)!important;
+    min-width:calc(50% - .6rem)!important;width:calc(50% - .6rem)!important}
+  [data-testid="stMetric"],.mo-kpi{min-height:100px}
+  .mo-tl{flex-direction:column;align-items:stretch;padding-top:6px}
+  .mo-tl-stop,.mo-tl-stop.first,.mo-tl-stop.last{flex:none;width:auto;flex-direction:row;align-items:center;gap:12px}
+  .mo-tl-stop .lab,.mo-tl-stop.first .lab,.mo-tl-stop.last .lab{margin-top:0;text-align:left}
+  .mo-tl-seg{flex:none;height:auto;min-height:46px;margin-left:6.5px;
+    border-left:3px solid var(--mo-route,var(--mo-opt));
+    padding-left:22px;display:flex;align-items:center}
+  .mo-tl-seg::before{display:none}
+  .mo-tl-seg span{position:static;margin:0}
+}
 </style>""")
 
 
@@ -144,6 +238,12 @@ def get_graph() -> MaritimeGraph:
     if not has_geodata():
         ensure_geodata(verbose=False)
     return MaritimeGraph()
+
+
+def on_phone() -> bool:
+    """Phone browsers get a taller, tighter map and room for a wrapped chart legend."""
+    agent = st.context.headers.get("User-Agent", "")
+    return any(k in agent for k in ("Mobile", "Android", "iPhone"))
 
 
 def chart(fig) -> None:
@@ -207,29 +307,68 @@ def run_agent(fn, *args, **kwargs):
 
 def cost_hint(tokens_in: int, tokens_out: int) -> str:
     usd = tokens_in / 1e6 * PRICE_IN + tokens_out / 1e6 * PRICE_OUT
-    return f"{tokens_in:,} input / {tokens_out:,} output tokens · ≈ ${usd:.3f} on your account"
+    return f"{num(tokens_in)} input / {num(tokens_out)} output tokens · ≈ ${usd:.3f} on your account"
 
 
 def itinerary_html(graph: MaritimeGraph, result, color: str) -> str:
-    """Ports and canals of the route as linked stops, with distance and mean speed between them.
+    """Ports and canals of the route as a timeline: stops on a line, distance and speed per stretch.
 
-    ``color`` is the route's colour on the map, so the strip and the line read as the same route.
+    ``color`` is the route's colour on the map, so the line and the map read as the same route.
     """
     esc = html.escape
     first = result.legs[0].origin
     last = result.legs[-1].destination
-    parts = [f'<div class="mo-stop end"><b>{esc(graph.ports[first].name)}</b><small>{first}</small></div>']
-    for s in stretches(graph, result):
-        stop = s["destination"]
-        parts.append(f'<div class="mo-seg"><span>{s["nm"]:,.0f} NM</span>'
-                     f'<span>{s["knots"]:.1f} kn</span></div>')
-        kind = "end" if stop == last else "canal" if is_canal_node(stop) else ""
-        parts.append(f'<div class="mo-stop {kind}"><b>{esc(graph.ports[stop].name)}</b>'
-                     f'<small>{"CANAL / STRAIT" if kind == "canal" else stop}</small></div>')
-    return f'<div class="mo-itin" style="--mo-route:{color}">{"".join(parts)}</div>'
+
+    def stop(code: str, kind: str) -> str:
+        sub = "CANAL / STRAIT" if kind == "canal" else code
+        return (f'<div class="mo-tl-stop {kind}"><i class="dot"></i><div class="lab">'
+                f'<b>{esc(graph.ports[code].name)}</b><small>{sub}</small></div></div>')
+
+    parts = [stop(first, "first")]
+    for seg in stretches(graph, result):
+        parts.append(f'<div class="mo-tl-seg"><span>{num(seg["nm"])} NM · {seg["knots"]:.1f} kn</span></div>')
+        end = seg["destination"]
+        parts.append(stop(end, "last" if end == last else "canal" if is_canal_node(end) else ""))
+    return f'<div class="mo-tl" style="--mo-route:{color}">{"".join(parts)}</div>'
+
+
+def badge(status: str, text: str) -> str:
+    """Status pill from STATUS_STYLE: colour + icon + words, never colour alone."""
+    color, icon, _ = STATUS_STYLE[status]
+    return (f'<span class="mo-badge" style="--c:{color};background:{color}1f;border-color:{color}66">'
+            f'<i style="background:{color};color:{"#fff" if status == "non_compliant" else "#0b1424"}">'
+            f'{icon}</i>{html.escape(text)}</span>')
+
+
+def status_card(label: str, badge_html: str, sub: str, tip: str = "") -> str:
+    return (f'<div class="mo-kpi" title="{html.escape(tip)}">'
+            f'<div class="lbl">{html.escape(label)}</div>{badge_html}'
+            f'<div class="sub">{html.escape(sub)}</div></div>')
+
+
+def headline_html(best_name: str, best, other_name: str | None, other, color: str) -> str:
+    """The result in one line: which route, what it saves, what it costs in time."""
+    chip = f'<span class="big chip"><i></i>{html.escape(best_name)}</span>'
+    if other is None:
+        parts = [f'<span class="big">{eur(best.total_cost_eur)}</span>',
+                 f'<span class="meta">{mean_speed(best):.1f} kn mean speed</span>',
+                 f'<span class="meta">{best.total_transit_hours / 24:.1f} days</span>']
+    else:
+        saving = other.total_cost_eur - best.total_cost_eur
+        pct = saving / other.total_cost_eur * 100 if other.total_cost_eur else 0
+        days = (best.total_transit_hours - other.total_transit_hours) / 24
+        vs = html.escape(other_name.removeprefix("Via "))
+        parts = [f'<span class="big">saves {eur(saving)}<small>−{pct:.0f} %</small></span>'
+                 if saving > 0.5 else '<span class="big">same cost</span>',
+                 f'<span class="meta">{"+" if days > 0 else "−"}{num(abs(days), 1)} days vs {vs}</span>'
+                 if abs(days) >= 0.05 else '<span class="meta">same transit time</span>']
+    sep = '<span class="sep">·</span>'
+    return (f'<div class="mo-headline" style="--mo-route:{color}"><div class="lead">Optimal route</div>'
+            f'{chip}{sep}{sep.join(parts)}</div>')
 
 
 graph = get_graph()
+phone = on_phone()
 fleet = load_vessels_from_csv()
 ports = {p.code: p for p in load_ports_from_csv().values()}
 port_label = {code: f"{p.name} ({code})" for code, p in sorted(ports.items(), key=lambda kv: kv[1].name)}
@@ -259,22 +398,28 @@ def side_section(title: str) -> None:
 
 # ------------------------------------------------------------------ sidebar
 with st.sidebar:
-    st.markdown('<div class="mo-brand"><span class="mark">MO</span><div><b>Maritime Optimizer</b>'
-                '<small>EU ETS · FuelEU Maritime · CII</small></div></div>', unsafe_allow_html=True)
+    st.html(f'<div class="mo-brand"><span class="mark">{LOGO}</span><div><b>Maritime Optimizer</b>'
+            '<small>EU ETS · FuelEU Maritime · CII</small></div></div>')
     side_section("Voyage")
     origin = st.selectbox("Origin", codes, key="origin", format_func=port_label.get)
     destination = st.selectbox("Destination", codes, key="destination", format_func=port_label.get)
     st.button("Swap origin and destination", icon=":material/swap_vert:", on_click=swap_ports,
               width="stretch")
     hours = QUERY.get("hours", "")
-    tmax = st.number_input("Maximum transit time (h)", 24, 5_000,
-                           int(hours) if hours.isdigit() and 24 <= int(hours) <= 5_000 else 1_500, 24)
+    preset_hours = int(hours) if hours.isdigit() and 24 <= int(hours) <= 5_000 else 1_500
+    # Entered in days (how a voyage deadline is thought of); the optimizer works in hours.
+    days_max = st.number_input("Maximum transit time (days)", 1.0, 5_000 / 24, preset_hours / 24, 0.5,
+                               format="%.1f")
+    tmax = round(days_max * 24)
+    st.caption(f"= {num(tmax)} h")
     side_section("Vessel")
     vessels = list(fleet)
-    vessel_name = st.selectbox("Vessel", vessels, index=vessels.index(preset("vessel", vessels, vessels[0])))
+    vessel_name = st.selectbox("Vessel", vessels, index=vessels.index(preset("vessel", vessels, vessels[0])),
+                               format_func=vessel_label)
     vessel = fleet[vessel_name]
     fuels = ["HFO", "MGO", "LNG", "BioLNG", "HVO", "E-Methanol"]
-    fuel = st.selectbox("Fuel", fuels, index=fuels.index(preset("fuel", fuels, vessel.fuel_type.value)))
+    fuel = st.selectbox("Fuel", fuels, index=fuels.index(preset("fuel", fuels, vessel.fuel_type.value)),
+                        format_func=fuel_label)
     corridors = st.toggle("Compare Suez vs Cape of Good Hope", value=QUERY.get("compare") == "1")
     with st.expander("Market, contract and regulation", icon=":material/tune:"):
         eua = st.slider("EUA price (EUR/t CO₂e)", 0, 200, 65, 5)
@@ -303,8 +448,9 @@ with st.sidebar:
                 "`pip install 'maritime-optimizer[agents]'`")
 
 # ------------------------------------------------------------------ header
-specs = [("Vessel", vessel_name), ("Type", vessel.vessel_type.value.replace("_", " ")),
-         ("Deadweight", f"{vessel.dwt:,.0f} t"), ("Fuel", fuel), ("Deadline", f"{tmax:,} h"),
+specs = [("Vessel", vessel_label(vessel_name)), ("Type", vessel_type_label(vessel.vessel_type.value)),
+         ("Deadweight", f"{num(vessel.dwt)} t"), ("Fuel", fuel_label(fuel)),
+         ("Deadline", f"{num(tmax / 24, 1)} days ({num(tmax)} h)"),
          ("EUA price", f"{eua} EUR/t"), ("Year", str(year))]
 st.markdown(
     f'<div class="mo-hero"><div class="mo-eyebrow">Optimized voyage</div>'
@@ -338,6 +484,10 @@ if not routes:
     st.stop()
 
 best_name, best = min(routes.items(), key=lambda kv: kv[1].total_cost_eur)
+other_name, other = next(((n, r) for n, r in routes.items() if n != best_name), (None, None))
+# Colour follows the role (optimal or alternative), the label says which corridor it is.
+route_slots = {n: ROUTE_SLOTS["optimal" if n == best_name else "alternative"] for n in routes}
+st.markdown(headline_html(best_name, best, other_name, other, OPT_COLOR), unsafe_allow_html=True)
 
 # A new voyage invalidates the previous AI report (the chat keeps its history).
 voyage_id = hashlib.sha256(json.dumps(
@@ -351,31 +501,32 @@ tab_voyage, tab_report, tab_chat = st.tabs(
 
 # ------------------------------------------------------------------ voyage tab
 with tab_voyage:
-    cols = st.columns(6)
+    cols = st.columns([1.1, 1, 1.1, 1, 1.1, 1.3])   # the status cards need more room
     kpi = dict(height="stretch")
-    cols[0].metric("Voyage cost", eur(best.total_cost_eur), icon=":material/euro:", **kpi)
-    cols[1].metric("Optimal speed", f"{mean_speed(best):.2f} kn", icon=":material/speed:", **kpi)
+    cols[0].metric("Cost", eur(best.total_cost_eur), icon=":material/euro:", **kpi)
+    cols[1].metric("Speed", f"{mean_speed(best):.2f} kn", icon=":material/speed:", **kpi)
     cols[2].metric("Transit", f"{best.total_transit_hours / 24:.1f} days",
-                   f"{tmax - best.total_transit_hours:,.0f} h spare", delta_color="off", delta_arrow="off",
+                   f"{num(tmax - best.total_transit_hours)} h spare", delta_color="off", delta_arrow="off",
                    icon=":material/schedule:", **kpi)
-    cols[3].metric("CO₂ emitted", f"{best.total_co2_combustion_tons:,.0f} t", icon=":material/co2:", **kpi)
-    cols[4].metric("CII rating", f"{'✓' if best.cii_compliant else '!'} {best.cii_rating.value}",
-                   icon=":material/eco:", **kpi)
+    cols[3].metric("CO₂", f"{num(best.total_co2_combustion_tons)} t", icon=":material/co2:", **kpi)
+    cii = best.cii_rating.value
+    cii_status = "compliant" if best.cii_compliant else "non_compliant" if cii == "E" else "attention"
+    cii_text = f"{cii} · " + ("compliant" if best.cii_compliant else "below target")
+    cols[4].markdown(status_card("CII rating", badge(cii_status, cii_text),
+                                 "Target: C or better"), unsafe_allow_html=True)
     in_scope = fueleu_in_scope(best)
     gap = best.fueleu_intensity - best.fueleu_max_allowed
     if in_scope:
-        cols[5].metric("FuelEU", "✓ compliant" if best.fueleu_compliant else "! deficit",
-                       f"{gap:+.2f} g/MJ", delta_color="inverse", icon=":material/local_gas_station:",
-                       help="Well-to-wake GHG intensity minus the FuelEU limit for the selected year, in "
-                            "gCO₂e/MJ (positive = above the limit).", **kpi)
+        fe = (badge("compliant", f"Compliant {gap:+.2f} g/MJ".replace("-", "−")) if best.fueleu_compliant
+              else badge("attention", f"Deficit {gap:+.2f} g/MJ"))
+        cols[5].markdown(status_card("FuelEU", fe, "GHG vs the limit",
+                                     "Well-to-wake GHG intensity minus the FuelEU limit for the selected "
+                                     "year, in gCO₂e/MJ (positive = above the limit)."),
+                         unsafe_allow_html=True)
     else:
-        cols[5].metric("FuelEU", "n/a", "outside EU scope", delta_color="off", delta_arrow="off",
-                       icon=":material/local_gas_station:",
-                       help="FuelEU Maritime applies only to voyages with an EU/EEA port.", **kpi)
-    if corridors and len(routes) == 2:
-        other = next(r for n, r in routes.items() if n != best_name)
-        st.info(f"**{best_name}** is cheaper by {eur(other.total_cost_eur - best.total_cost_eur)}.",
-                icon=":material/compare_arrows:")
+        cols[5].markdown(status_card("FuelEU", badge("info", "Not applicable"), "Outside EU scope",
+                                     "FuelEU Maritime applies only to voyages with an EU/EEA port."),
+                         unsafe_allow_html=True)
     if best.cii_speed_cap_factor < 1:
         st.info(f"CII retry: speed capped at {best.cii_speed_cap_factor:.0%} of the maximum "
                 "to reach rating C.", icon=":material/slow_motion_video:")
@@ -389,16 +540,22 @@ with tab_voyage:
                    f"({'included in' if priced else 'not in'} the voyage cost). Pooling, banking and "
                    "borrowing are not modelled and could avoid it.", icon=":material/gavel:")
 
-    st.markdown(itinerary_html(graph, best, P["series"][ROUTE_SLOTS[best_name]]), unsafe_allow_html=True)
     with st.container(border=True):
         card_title("Route" + (f" · cheapest: {best_name}" if len(routes) > 1 else ""))
-        fig = route_map(graph, routes, {n: ROUTE_SLOTS[n] for n in routes}, height=480)
+        st.markdown(itinerary_html(graph, best, P["series"][route_slots[best_name]]), unsafe_allow_html=True)
+        map_labels = {n: f"<b>{n}</b><br>{num(r.total_distance_nm)} NM"
+                      + (f" · saves {eur(other.total_cost_eur - r.total_cost_eur)}"
+                         if other is not None and n == best_name and other.total_cost_eur > r.total_cost_eur
+                         else "") for n, r in routes.items()}
+        fig = route_map(graph, routes, route_slots, height=330 if phone else 480, primary=best_name,
+                        labels=None if phone else map_labels,   # no room for text on a phone
+                        aspect=1.1 if phone else 2.6)
         fig.update_layout(paper_bgcolor=P["ocean"])  # sea to the card edges, no strip beside the map
         chart(fig)
     left, right = st.columns(2)
     with left, st.container(border=True, height="stretch"):
         card_title("Where the money goes")
-        chart(cost_breakdown(list(routes.items())))
+        chart(cost_breakdown(list(routes.items()), narrow=phone))
         parts = {k: v for k, v in cost_components(best).items() if v}
         total = sum(parts.values())
         rows_html = "".join(
@@ -418,12 +575,12 @@ with tab_voyage:
             "Fuel t": round(leg.fuel_consumed_tons, 2), "CO₂ t": round(leg.co2_combustion_tons, 2),
             "Fuel EUR": round(leg.fuel_cost_eur), "ETS EUR": round(leg.ets_cost_eur),
         } for name, leg in zip(legs, best.legs, strict=True)]), hide_index=True, width="stretch")
+    st.markdown('<div class="mo-cta"><div><b>Need this as a regulatory brief?</b><span>Open the '
+                '<b style="display:inline">AI report</b> tab: Claude writes a compliance summary of this '
+                'voyage (EU ETS, FuelEU, CII, ISO 14083) and every figure in it is checked against the '
+                'optimizer.'
+                '</span></div></div>', unsafe_allow_html=True)
 
-# Status → (colour, icon, label): colour never alone, always with an icon and a word.
-STATUS_STYLE = {"compliant": (STATUS["good"], "✓", "Compliant"),
-                "attention": (STATUS["warning"], "!", "Needs attention"),
-                "non_compliant": (STATUS["critical"], "✕", "Non-compliant"),
-                "info": (P["muted"], "i", "Information")}
 NO_KEY = "Enter your Anthropic API key in the sidebar"
 KEY_HELP = ("Create one at <a href='https://console.anthropic.com/settings/keys' target='_blank'>"
             "console.anthropic.com</a>. Calls are billed to your account; the key never leaves this "
@@ -450,8 +607,9 @@ with tab_report:
     elif "report" not in st.session_state:
         empty_state("No report yet for this voyage",
                     "Claude reads the optimizer output and writes a regulatory summary.")
-    if AGENTS and api_key() and st.button("Generate AI report", type="primary",
-                                           icon=":material/auto_awesome:"):
+    if AGENTS and st.button("Generate compliance report", type="primary", icon=":material/auto_awesome:",
+                            disabled=not api_key(),
+                            help=None if api_key() else f"{NO_KEY} first.") and api_key():
         rows = list(routes.items())
         with st.spinner("Claude is writing the report…"):
             report = run_agent(write_report, f"{ports[origin].name} → {ports[destination].name}",
@@ -552,5 +710,8 @@ with tab_chat:
                 history += [{"role": "user", "content": question},
                             {"role": "assistant", "content": answer.text, "meta": meta}]
 
-st.markdown(f'<div class="mo-foot"><b>Data notice.</b> {html.escape(DISCLAIMER)}</div>',
-            unsafe_allow_html=True)
+linkedin = (f' · <a href="{LINKEDIN_URL}" target="_blank" rel="noopener">LinkedIn</a>' if LINKEDIN_URL
+            else "")
+st.markdown(f'<div class="mo-foot"><b>Data notice.</b> {html.escape(DISCLAIMER)}'
+            '<div class="mo-by">Built by Alejandro Viñuesa · <a href="https://github.com/alejandrovinuesa" '
+            f'target="_blank" rel="noopener">GitHub</a>{linkedin}</div></div>', unsafe_allow_html=True)

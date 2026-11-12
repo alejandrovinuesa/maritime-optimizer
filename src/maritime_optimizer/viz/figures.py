@@ -22,6 +22,14 @@ BAR_PX = 22          # bar thickness (spec: <= 24 px)
 
 # ---------------------------------------------------------------- formatting
 
+THIN = " "     # thin space: thousands separator everywhere
+
+
+def num(x: float, digits: int = 0) -> str:
+    """Number with thin-space thousands separators: 1 234 567, 62.5."""
+    return f"{x:,.{digits}f}".replace(",", THIN)
+
+
 def eur(x: float) -> str:
     """Compact euro amount: 950 EUR, 12.9k EUR, 2.47M EUR."""
     a = abs(x)
@@ -29,7 +37,7 @@ def eur(x: float) -> str:
         return f"{x / 1e6:.2f}M EUR"
     if a >= 1e4:
         return f"{x / 1e3:.1f}k EUR"
-    return f"{x:,.0f} EUR"
+    return f"{num(x)} EUR"
 
 
 def mean_speed(r: VoyageResult) -> float:
@@ -60,7 +68,7 @@ def _layout(height: int, **kw) -> dict:
         xaxis=dict(axis), yaxis=dict(axis),
         legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0, traceorder="normal",
                     font=dict(color=T["ink2"])),
-        barcornerradius=4,
+        barcornerradius=4, separators=f".{THIN}",   # decimal point, thin-space thousands
         showlegend=False,
     )
     base.update(kw)
@@ -88,26 +96,59 @@ def _gc_arc(lat1: float, lon1: float, lat2: float, lon2: float, n: int) -> List[
 
 
 def route_map(graph: MaritimeGraph, routes: Dict[str, VoyageResult],
-              slots: Optional[Dict[str, int]] = None, height: int = 420) -> go.Figure:
-    """Map of one or more optimized routes (great-circle arcs between graph nodes)."""
+              slots: Optional[Dict[str, int]] = None, height: int = 420,
+              primary: Optional[str] = None, labels: Optional[Dict[str, str]] = None,
+              aspect: float = 2.6) -> go.Figure:
+    """Map of one or more optimized routes (great-circle arcs between graph nodes).
+
+    ``primary`` names the optimal route: it is drawn thick and solid, the others thin, dashed and
+    fainter. ``labels`` maps a route name to a text annotated at the middle of that route.
+    ``aspect`` is the width/height of the map card, used to fit the extent (2.6 on a wide page).
+    """
     slots = slots or {name: i for i, name in enumerate(routes)}
     fig = go.Figure()
-    lons_all, lats_all = [], []
+    lons_all, lats_all, mids = [], [], {}
     for name, r in routes.items():
-        lons, lats = [], []
+        lons, lats, mid = [], [], None
+        total = sum(leg.distance_nm for leg in r.legs) or 1.0
+        done = 0.0
         for u, v in zip(r.route_ports[:-1], r.route_ports[1:], strict=True):
             a, b = graph.ports[u], graph.ports[v]
-            n = max(2, int(graph.graph.edges[u, v]["distance_nm"] / 60))
+            d = graph.graph.edges[u, v]["distance_nm"]
+            n = max(2, int(d / 60))
             arc = _gc_arc(a.lat, a.lon, b.lat, b.lon, n)
+            if mid is None and (done + d) / total >= 0.5:      # the point half-way along the route
+                f = min(1.0, max(0.0, (0.5 * total - done) / d)) if d else 0.0
+                mid = arc[min(n, round(f * n))]
+            done += d
             if lons:
                 arc = arc[1:]
             lons += [p[0] for p in arc]
             lats += [p[1] for p in arc]
         lons_all += lons
         lats_all += lats
+        main = primary is None or name == primary
         fig.add_trace(go.Scattergeo(
             lon=lons, lat=lats, mode="lines", name=name, hoverinfo="skip",
-            line=dict(width=2, color=T["series"][slots[name]]), meta={"slot": slots[name]}))
+            opacity=1.0 if main else 0.65,
+            line=dict(width=2 if primary is None else 4.5 if main else 2, dash="solid" if main else "dash",
+                      color=T["series"][slots[name]]),
+            meta={"slot": slots[name]}))
+        mids[name] = mid
+    # Route labels go on the inner side of each route (towards the centre of all routes), clear of
+    # the map edge and of the line itself.
+    if labels:
+        centre_lat = sum(lats_all) / len(lats_all)
+        for name, mid in mids.items():
+            if name in labels and mid:
+                below = mid[1] < centre_lat
+                # An empty line on the route side lifts the text clear of the line.
+                text = f"{labels[name]}<br>" if below else f"<br>{labels[name]}"
+                fig.add_trace(go.Scattergeo(
+                    lon=[mid[0]], lat=[mid[1]], mode="text", text=[text], hoverinfo="skip",
+                    textposition="top center" if below else "bottom center",
+                    showlegend=False, textfont=dict(color=T["series"][slots[name]], size=13),
+                    meta={"slot": slots[name], "role": "label"}))
         # Invisible but generous hover targets on every node of the route.
         cum, hover = 0.0, []
         for i, code in enumerate(r.route_ports):
@@ -124,8 +165,10 @@ def route_map(graph: MaritimeGraph, routes: Dict[str, VoyageResult],
     # Ports and transited canals as visible markers with a surface ring. Only the
     # endpoints and the corridor-defining nodes are labelled, to avoid collisions.
     labelled = {"SUEZ", "PANA", "HOPE", "HORN"}
+    ends = {}
     for r in routes.values():
         labelled |= {r.route_ports[0], r.route_ports[-1]}
+        ends[r.route_ports[0]], ends[r.route_ports[-1]] = "Origin", "Destination"
     shown = {}
     for r in routes.values():
         for code in r.route_ports:
@@ -134,16 +177,22 @@ def route_map(graph: MaritimeGraph, routes: Dict[str, VoyageResult],
     fig.add_trace(go.Scattergeo(
         lon=[p.lon for p in shown.values()], lat=[p.lat for p in shown.values()],
         mode="markers+text", textposition="top center",
-        text=[p.name if code in labelled else "" for code, p in shown.items()],
-        hovertext=[p.name for p in shown.values()], hoverinfo="text",
-        textfont=dict(color=T["ink2"], size=11), showlegend=False,
-        marker=dict(size=9, color=T["ink2"], line=dict(width=2, color=T["surface"])),
+        text=[(f"<b>{p.name}</b>" if code in ends else p.name) if code in labelled else ""
+              for code, p in shown.items()],
+        hovertext=[f"{p.name} ({ends[code].lower()})" if code in ends else p.name
+                   for code, p in shown.items()],
+        hoverinfo="text",
+        textfont=dict(color=T["ink2"], size=13), showlegend=False,
+        marker=dict(size=[16 if code in ends else 9 for code in shown], color=T["ink2"],
+                    symbol=["circle-open-dot" if ends.get(code) == "Destination" else "circle"
+                            for code in shown],
+                    line=dict(width=2, color=T["surface"])),
         meta={"role": "nodes"}))
-    # Extent padded to the card's aspect ratio (~2.6:1) so the map fills the card.
+    # Extent padded to the card's aspect ratio so the map fills the card.
     lon0, lon1, lat0, lat1 = min(lons_all), max(lons_all), min(lats_all), max(lats_all)
-    lat_span = (lat1 - lat0) + 12
-    lon_span = max((lon1 - lon0) + 12, lat_span * 2.6)
-    lat_span = max(lat_span, lon_span / 2.6)
+    lat_span = (lat1 - lat0) + 10
+    lon_span = max((lon1 - lon0) + (8 if aspect >= 2 else 18), lat_span * aspect)
+    lat_span = max(lat_span, lon_span / aspect)
     lon_c, lat_c = (lon0 + lon1) / 2, (lat0 + lat1) / 2
     fig.update_geos(
         projection_type="natural earth", showcountries=False, showframe=False,
@@ -160,7 +209,7 @@ def route_map(graph: MaritimeGraph, routes: Dict[str, VoyageResult],
 
 # ---------------------------------------------------------------- cost breakdown
 
-def cost_breakdown(rows: Sequence[Tuple[str, VoyageResult]]) -> go.Figure:
+def cost_breakdown(rows: Sequence[Tuple[str, VoyageResult]], narrow: bool = False) -> go.Figure:
     """Horizontal stacked bars of the objective Z (fuel, ETS, time charter, tolls) per alternative."""
     labels = [label for label, _ in rows]
     comps = [cost_components(r) for _, r in rows]
@@ -180,10 +229,11 @@ def cost_breakdown(rows: Sequence[Tuple[str, VoyageResult]]) -> go.Figure:
         fig.add_annotation(x=sum(c.values()), y=label, text=eur(sum(c.values())), showarrow=False,
                            xanchor="left", xshift=6, font=dict(color=T["ink"], size=12))
     n = len(rows)
-    height = 56 + n * 44
+    top = 100 if narrow else 36          # a narrow card wraps the legend onto more rows
+    height = top + 20 + n * 44
     fig.update_layout(_layout(
         height, barmode="stack", bargap=1 - BAR_PX / 44, showlegend=True,
-        margin=dict(l=8, r=90, t=36, b=8),
+        margin=dict(l=8, r=90, t=top, b=8),
         xaxis=dict(_layout(0)["xaxis"], tickformat="~s", ticksuffix=" EUR", showline=False),
         yaxis=dict(_layout(0)["yaxis"], autorange="reversed", showgrid=False)))
     return fig
@@ -195,7 +245,7 @@ def hbar(labels: Sequence[str], values: Sequence[float], unit: str, fmt: str = "
          ref: Optional[float] = None, ref_label: str = "", slot: int = 0,
          x_from_zero: bool = True) -> go.Figure:
     """One series of horizontal bars with the value at the tip and an optional reference line."""
-    text = [f"{v:{fmt}} {unit}" for v in values]
+    text = [f"{v:{fmt}} {unit}".replace(",", THIN) for v in values]
     fig = go.Figure(go.Bar(
         y=list(labels), x=list(values), orientation="h", text=text, textposition="outside",
         textfont=dict(color=T["ink"]), cliponaxis=False, meta={"slot": slot},
@@ -265,6 +315,8 @@ def apply_theme(fig: go.Figure, mode: str = "light", palette: Optional[dict] = N
             tr.marker.color = p["series"][meta["slot"]]
             if "line" in tr:
                 tr.line.color = p["series"][meta["slot"]]
+        if meta.get("role") == "label":
+            tr.textfont.color = p["series"][meta["slot"]]
         if meta.get("role") == "nodes":
             tr.marker.color = p["ink2"]
             tr.textfont.color = p["ink2"]

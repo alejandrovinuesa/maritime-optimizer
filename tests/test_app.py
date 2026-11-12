@@ -26,7 +26,7 @@ def test_voyage_tab_renders_without_key(graph, monkeypatch):
     monkeypatch.delenv("MARITIME_OPT_ALLOW_SERVER_KEY", raising=False)
     at = run_app()
     assert not at.exception
-    assert [m.label for m in at.metric][:2] == ["Voyage cost", "Optimal speed"]
+    assert [m.label for m in at.metric][:2] == ["Cost", "Speed"]
     assert "Enter your Anthropic API key" in texts(at.info)
     assert at.chat_input[0].disabled
 
@@ -66,7 +66,7 @@ def test_report_and_chat_use_the_session_key(graph, monkeypatch):
     monkeypatch.setattr(report_mod, "write_report", fake_report)
     monkeypatch.setattr(assistant, "ask", fake_ask)
     at = run_app(anthropic_key="sk-ant-user-test")
-    next(b for b in at.button if b.label == "Generate AI report").click().run()
+    next(b for b in at.button if b.label == "Generate compliance report").click().run()
     assert not at.exception
     assert "Valencia to Rotterdam is compliant" in texts(at.markdown)
     assert "AI-generated content" in texts(at.warning)
@@ -90,8 +90,21 @@ def test_fueleu_deficit_note_and_out_of_scope_voyage(graph, monkeypatch):
     note = texts(at.warning)
     assert "estimated penalty" in note and "Pooling, banking and borrowing" in note
     at = run_app(origin="AEJEA", destination="BRSSZ")  # no EU port: FuelEU does not apply
-    fueleu = next(m for m in at.metric if m.label == "FuelEU")
-    assert fueleu.value == "n/a" and "estimated penalty" not in texts(at.warning)
+    fueleu = next(m.value for m in at.markdown if "mo-kpi" in m.value and ">FuelEU<" in m.value)
+    assert "Not applicable" in fueleu and "estimated penalty" not in texts(at.warning)
+
+
+def test_headline_and_status_badges(graph):
+    at = run_app()                                   # Valencia → Rotterdam on HFO
+    markdown = [m.value for m in at.markdown]
+    headline = next(m for m in markdown if m.startswith('<div class="mo-headline"'))
+    assert "Optimal route" in headline and "EUR" in headline
+    assert any("mo-badge" in m and "Deficit" in m for m in markdown)       # FuelEU deficit badge
+    assert any("mo-badge" in m and "· " in m and ">CII rating<" in m for m in markdown)
+    at = run_app(origin="ESVLC", destination="SGSIN")
+    at.sidebar.toggle[0].set_value(True).run()       # Suez vs Cape: headline states the saving
+    headline = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-headline"'))
+    assert "saves" in headline and " days vs " in headline and "%" in headline
 
 
 def test_query_params_preset_the_scenario(graph):
@@ -101,7 +114,7 @@ def test_query_params_preset_the_scenario(graph):
     at.run()
     assert not at.exception
     hero = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-hero"'))
-    assert "Singapore" in hero and "LNG" in hero and "2,500 h" in hero
+    assert "Singapore" in hero and "LNG" in hero and "2 500 h" in hero and "104.2 days" in hero
     assert at.sidebar.toggle[0].value is True                     # Suez vs Cape comparison on
-    assert at.sidebar.selectbox[2].value == at.sidebar.selectbox[2].options[0]   # invalid → default
+    assert at.sidebar.selectbox[2].value == "panamax_bulker"            # invalid → default vessel
 
