@@ -44,7 +44,10 @@ def test_streamlit_app_runs(graph):
     assert "Valencia" in hero and "Rotterdam" in hero
     # four metric cards plus the CII and FuelEU status cards
     assert len(at.metric) == 4 and sum("mo-kpi" in m.value for m in at.markdown) == 2
-    at.sidebar.toggle[0].set_value(True).run()               # Suez vs Cape comparison
+    assert at.sidebar.toggle[0].disabled                     # no Suez-or-Cape choice on this voyage
+    at = AppTest.from_file(str(APP), default_timeout=60)
+    at.session_state["destination"] = "SGSIN"
+    at.run().sidebar.toggle[0].set_value(True).run()         # Suez vs Cape comparison
     assert not at.exception
 
 

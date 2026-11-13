@@ -127,3 +127,44 @@ def test_transit_card_deadline_binding_chip(graph):
     at.sidebar.toggle[0].set_value(True).run()       # the Cape route sails at the deadline
     transit = next(m for m in at.metric if m.label == "Transit")
     assert transit.delta == "Deadline binding"
+
+
+def test_corridor_comparison_only_where_it_applies(graph):
+    at = run_app()                                   # Valencia → Rotterdam: neither Suez nor the Cape
+    assert at.sidebar.toggle[0].disabled
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.query_params.update(compare="1")              # a shared link cannot force it on
+    at.run()
+    assert not at.exception and at.sidebar.toggle[0].value is False
+    at = run_app(origin="ESVLC", destination="SGSIN")
+    assert not at.sidebar.toggle[0].disabled
+
+
+def headline(at) -> str:
+    return next(m.value for m in at.markdown if m.value.startswith('<div class="mo-headline"'))
+
+
+def test_deadline_out_of_reach_shows_the_fastest_voyage(graph):
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.query_params.update(origin="ESVLC", destination="SGSIN", hours="480")
+    at.run()
+    assert not at.exception and not at.error
+    assert "No route meets the 20.0-day deadline" in texts(at.warning)
+    assert "Fastest feasible route" in headline(at) and "over the deadline" in headline(at)
+    transit = next(m for m in at.metric if m.label == "Transit")
+    assert transit.delta.endswith("h late")
+    days = float(transit.value.split()[0])
+    # One more day than the fastest voyage is feasible again, and no longer flagged.
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.query_params.update(origin="ESVLC", destination="SGSIN", hours=str(round((days + 1) * 24)))
+    at.run()
+    assert "Optimal route" in headline(at) and "No route meets" not in texts(at.warning)
+
+
+def test_tight_deadline_falls_back_to_the_quicker_corridor(graph):
+    """The Cape is cheapest but too slow for 800 h: the Suez route must be found, not an error."""
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.query_params.update(origin="ESVLC", destination="SGSIN", hours="800")
+    at.run()
+    assert not at.exception and not at.error
+    assert "Optimal route" in headline(at) and "Suez Canal" in headline(at)
