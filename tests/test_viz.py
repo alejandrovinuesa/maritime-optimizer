@@ -42,8 +42,9 @@ def test_streamlit_app_runs(graph):
     assert not at.exception
     hero = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-hero"'))
     assert "Valencia" in hero and "Rotterdam" in hero
-    # four metric cards plus the CII and FuelEU status cards
-    assert len(at.metric) == 4 and sum("mo-kpi" in m.value for m in at.markdown) == 2
+    # four figures plus the CII and FuelEU ratings, in one instrument row
+    row = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-kpis"'))
+    assert row.count('class="mo-kpi"') == 6 and row.count('class="val"') == 4
     assert at.sidebar.toggle[0].disabled                     # no Suez-or-Cape choice on this voyage
     at = AppTest.from_file(str(APP), default_timeout=60)
     at.session_state["destination"] = "SGSIN"

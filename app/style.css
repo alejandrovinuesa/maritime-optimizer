@@ -34,10 +34,12 @@ h1,h2,h3,h4{letter-spacing:-.01em}
   text-transform:uppercase;color:var(--mo-ink)}
 .mo-port small{display:block;margin-top:8px;font:400 12.5px/1.2 var(--mo-mono);color:var(--mo-ink2)}
 .mo-port.to{text-align:right}
-.mo-track{flex:1 1 60px;min-width:28px;position:relative;height:0;border-top:2px dashed var(--mo-muted);
-  margin-top:clamp(14px,1.75vw,22px);opacity:.75}
+.mo-track{flex:1 1 60px;min-width:28px;position:relative;height:0;
+  border-top:2px dashed color-mix(in srgb,var(--mo-muted) 75%,transparent);margin-top:clamp(14px,1.75vw,22px)}
 .mo-track::after{content:"";position:absolute;right:-2px;top:-7px;border:6px solid transparent;border-right:0;
   border-left:10px solid var(--mo-muted)}
+.mo-track span{position:absolute;left:50%;top:-10px;transform:translateX(-50%);padding:0 12px;
+  background:var(--mo-page);font:400 12.5px/18px var(--mo-mono);color:var(--mo-ink);white-space:nowrap}
 .mo-track::before{content:"";position:absolute;left:-2px;top:-5px;width:8px;height:8px;border-radius:50%;
   background:var(--mo-muted)}
 .mo-specs{display:flex;flex-wrap:wrap;gap:8px 30px;margin-top:16px}
@@ -60,23 +62,30 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 .mo-headline .meta{font-size:13px;color:var(--mo-ink2);margin-top:6px}
 .mo-headline .late{color:#f0a3a3}
 
-/* KPI cards */
-[data-testid="stMetric"],.mo-kpi{min-height:116px;background:var(--mo-surface);
-  border:1px solid var(--mo-border);border-radius:var(--mo-r);padding:13px 15px}
-.mo-kpi{height:100%;box-sizing:border-box;padding:13px 12px}
-.mo-kpi .lbl,[data-testid="stMetricLabel"] p{font:500 12.5px/1.3 var(--mo-cond);letter-spacing:.08em;
-  text-transform:uppercase;color:var(--mo-ink2);white-space:nowrap}
-.mo-kpi .lbl{margin-bottom:9px}
-.mo-kpi .sub{font-size:12.5px;color:var(--mo-ink2);margin-top:8px;white-space:nowrap}
+/* instrument row: four figures and two ratings, each with a line of context; speed and transit
+   carry a gauge against their limit */
+.mo-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) repeat(2,minmax(0,1.15fr));gap:12px;
+  margin:2px 0 16px}
+.mo-kpi{display:flex;flex-direction:column;min-width:0;min-height:128px;box-sizing:border-box;
+  padding:15px 18px 14px;background:var(--mo-surface);border:1px solid var(--mo-border);border-radius:var(--mo-r)}
+.mo-kpi .lbl{font:500 12.5px/1.3 var(--mo-cond);letter-spacing:.09em;text-transform:uppercase;
+  color:var(--mo-ink2);margin-bottom:10px;white-space:nowrap}
+.mo-kpi .val{font:600 clamp(1.5rem,2.1vw,1.9rem)/1.05 var(--mo-cond);letter-spacing:.005em;
+  font-variant-numeric:tabular-nums;color:var(--mo-ink);white-space:nowrap}
+.mo-kpi .val small{font:500 .5em/1 var(--mo-cond);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--mo-ink2);margin-left:6px}
+.mo-kpi .gauge{height:4px;border-radius:2px;background:color-mix(in srgb,var(--mo-ink2) 18%,transparent);
+  margin-top:11px;overflow:hidden}
+.mo-kpi .gauge i{display:block;height:100%;border-radius:2px}
+.mo-kpi .sub{font-size:12.5px;line-height:1.35;color:var(--mo-ink2);margin-top:auto;padding-top:9px}
+.mo-kpi .sub b{font-weight:600}
+.mo-kpi .mo-badge{align-self:flex-start;margin-top:3px}
 .mo-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px 3px 4px;border-radius:999px;
   white-space:nowrap;font-weight:600;font-size:12px;line-height:1.25;border:1px solid;
   color:color-mix(in srgb,var(--c) 55%,#fff)!important}
 .mo-badge i{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;color:#0b1424;
   font-style:normal;font-size:11px;font-weight:800}
-[data-testid="stMetric"] [data-testid="stIconMaterial"]{color:var(--mo-muted)}
-[data-testid="stMetricDelta"]{font-size:12.5px}
-[data-testid="stMetricValue"]{font-family:var(--mo-cond);font-size:clamp(1.15rem,1.5vw,1.5rem);font-weight:600;
-  letter-spacing:.005em;font-variant-numeric:tabular-nums;color:var(--mo-ink)}
+@media (max-width:1150px){.mo-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 /* itinerary: a timeline, stops on a line, distance and speed above each stretch */
 .mo-tl{display:flex;align-items:flex-start;padding:26px 4px 4px;margin-bottom:6px}
@@ -121,7 +130,7 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 .mo-status .lbl{font:500 12px/1.3 var(--mo-cond);letter-spacing:.08em;text-transform:uppercase;
   color:var(--mo-ink2);margin:4px 0 8px 29px}
 .mo-status p{font-size:13px;margin:0;color:var(--mo-ink2)}
-.mo-empty{padding:22px 24px;border:1px dashed var(--mo-border);border-radius:var(--mo-r)}
+.mo-empty{padding:22px 24px;margin-bottom:16px;border:1px dashed var(--mo-border);border-radius:var(--mo-r)}
 .mo-empty b{display:block;font-size:16px;font-weight:600;margin-bottom:6px;color:var(--mo-ink)}
 .mo-empty p{margin:0;color:var(--mo-ink2);font-size:13.5px}
 .mo-empty a{color:#6aa8f0}
@@ -131,7 +140,17 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 .mo-by{margin-top:8px;color:var(--mo-ink2)}
 .mo-foot b{color:var(--mo-ink)}
 
-[data-testid="stTab"]{display:flex;align-items:center}
+/* buttons: one shape and one set of states everywhere; the primary is the only filled one */
+.stButton button,.stDownloadButton button{min-height:2.5rem;border-radius:var(--mo-r);font-weight:500;
+  transition:background .12s,border-color .12s,color .12s}
+.stButton button[kind="secondary"]:hover,.stDownloadButton button:hover{border-color:var(--mo-blue);
+  color:var(--mo-ink);background:color-mix(in srgb,var(--mo-blue) 12%,transparent)}
+.stButton button:focus-visible,.stDownloadButton button:focus-visible{outline:2px solid var(--mo-blue);
+  outline-offset:2px}
+.stButton button[kind="primary"]{font-weight:600;letter-spacing:.01em}
+.stButton button:disabled{opacity:.55}
+[data-testid="stTab"]{display:flex;align-items:center;padding-inline:2px;margin-right:14px}
+[data-testid="stTab"] p{font-size:14.5px}
 .mo-cta{margin-top:14px;padding:14px 18px;border-radius:var(--mo-r);border:1px dashed var(--mo-border)}
 .mo-cta b{display:block;font-size:15px;color:var(--mo-ink);margin-bottom:2px}
 .mo-cta span{font-size:13.5px;color:var(--mo-ink2)}
@@ -162,11 +181,10 @@ h1,h2,h3,h4{letter-spacing:-.01em}
   .mo-headline .big{font-size:1.35rem}
   .mo-headline .big.name i{align-self:center}
   .mo-headline .meta{font-size:12.5px;margin-top:0}
-  /* KPI cards two per row instead of six stacked full-width */
-  [data-testid="stHorizontalBlock"]:has(.mo-kpi){flex-wrap:wrap!important;gap:.6rem!important}
-  [data-testid="stHorizontalBlock"]:has(.mo-kpi)>div{flex:1 1 calc(50% - .6rem)!important;
-    min-width:calc(50% - .6rem)!important;width:calc(50% - .6rem)!important}
-  [data-testid="stMetric"],.mo-kpi{min-height:100px}
+  /* instrument row two per column */
+  .mo-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .mo-kpi{min-height:112px;padding:12px 14px}
+  .mo-track span{display:none}
   .mo-tl{flex-direction:column;align-items:stretch;padding-top:6px}
   .mo-tl-stop,.mo-tl-stop.first,.mo-tl-stop.last{flex:none;width:auto;flex-direction:row;align-items:center;gap:12px}
   .mo-tl-stop .lab,.mo-tl-stop.first .lab,.mo-tl-stop.last .lab{margin-top:0;text-align:left}

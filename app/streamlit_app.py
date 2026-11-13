@@ -13,6 +13,7 @@ import base64
 import hashlib
 import html
 import json
+import math
 import os
 from dataclasses import replace
 from pathlib import Path
@@ -76,7 +77,7 @@ LOGO_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="n
             '<rect x="18.5" y="16.5" width="5" height="4" fill="#fff"/></svg>')
 LOGO = ('<img alt="Maritime Optimizer" width="26" height="26" src="data:image/svg+xml;base64,'
         + base64.b64encode(LOGO_SVG.encode()).decode() + '">')
-LINKEDIN_URL = "https://www.linkedin.com/alejandrovinuesacano/"
+LINKEDIN_URL = "https://www.linkedin.com/in/alejandrovinuesacano/"
 
 st.set_page_config(page_title="Maritime optimizer", page_icon="⚓", layout="wide",
                    initial_sidebar_state="auto")   # auto: collapsed on phones so results show first
@@ -98,6 +99,7 @@ def get_graph() -> MaritimeGraph:
 
 CHART_FONT = '"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif'
 FASTEST = "Fastest feasible route"
+DAYS_LIMIT = 5_000 / 24
 
 
 @st.cache_data(show_spinner=False)
@@ -252,10 +254,21 @@ def badge(status: str, text: str) -> str:
             f'{icon}</i>{html.escape(text)}</span>')
 
 
-def status_card(label: str, badge_html: str, sub: str, tip: str = "") -> str:
-    return (f'<div class="mo-kpi" title="{html.escape(tip)}">'
-            f'<div class="lbl">{html.escape(label)}</div>{badge_html}'
-            f'<div class="sub">{html.escape(sub)}</div></div>')
+def tile(label: str, body: str, sub: str = "", gauge: tuple[float, str] | None = None, tip: str = "") -> str:
+    """One tile of the instrument row: label, figure or badge, an optional gauge, a line of context."""
+    bar = ""
+    if gauge:
+        share, color = gauge
+        bar = (f'<div class="gauge"><i style="width:{min(max(share, 0), 1):.1%};background:{color}">'
+               '</i></div>')
+    return (f'<div class="mo-kpi" title="{html.escape(tip)}"><div class="lbl">{html.escape(label)}</div>'
+            f'{body}{bar}<div class="sub">{sub}</div></div>')
+
+
+def figure(text: str) -> str:
+    """'1.32M EUR' as a large figure with a small unit."""
+    value, _, unit = text.rpartition(" ")
+    return f'<div class="val">{html.escape(value)}<small>{html.escape(unit)}</small></div>'
 
 
 def headline_html(title: str, best, other_name: str | None, other, color: str, tmax: float,
@@ -328,13 +341,15 @@ with st.sidebar:
     side_section("Voyage")
     origin = st.selectbox("Origin", codes, key="origin", format_func=port_label.get)
     destination = st.selectbox("Destination", codes, key="destination", format_func=port_label.get)
-    st.button("Swap origin and destination", icon=":material/swap_vert:", on_click=swap_ports,
-              width="stretch")
+    st.button("Swap ports", icon=":material/swap_vert:", on_click=swap_ports, width="stretch")
     hours = QUERY.get("hours", "")
     preset_hours = int(hours) if hours.isdigit() and 24 <= int(hours) <= 5_000 else 1_500
+    st.session_state.setdefault("days", preset_hours / 24)
+    if "raise_days" in st.session_state:      # set below when the deadline was out of reach
+        st.session_state["days"] = st.session_state.pop("raise_days")
     # Entered in days (how a voyage deadline is thought of); the optimizer works in hours.
-    days_max = st.number_input("Maximum transit time (days)", 1.0, 5_000 / 24, preset_hours / 24, 0.5,
-                               format="%.1f")
+    days_max = st.number_input("Maximum transit time (days)", 1.0, DAYS_LIMIT, step=0.5, format="%.1f",
+                               key="days")
     tmax = round(days_max * 24)
     side_section("Vessel")
     vessels = list(fleet)
@@ -349,18 +364,19 @@ with st.sidebar:
     eua = st.slider("EU Allowance (EUA) price · EUR/t", 0, 200, 65, 5)
     # Offered only where the choice exists: the shortest path uses Suez or rounds the Cape.
     choice = corridor_choice(origin, destination)
-    corridors = st.toggle("Compare Suez vs Cape of Good Hope", disabled=not choice,
+    corridors = st.toggle("Compare Suez vs the Cape", disabled=not choice,
                           value=choice and QUERY.get("compare") == "1",
                           help=None if choice else "This voyage goes through neither Suez nor "
                                                    "the Cape of Good Hope.") and choice
     with st.expander("Charter, cargo, year and EEXI", icon=":material/tune:"):
-        tce = st.number_input("Time charter equivalent (EUR/day)", 1_000, 200_000,
-                              int(vessel.tce_eur_day), 500)
+        tce = st.number_input("Charter rate (EUR/day)", 1_000, 200_000, int(vessel.tce_eur_day), 500,
+                              help="Time charter equivalent: what a day of the vessel is worth.")
         cargo = st.number_input("Cargo (t)", 1_000, 400_000, int(min(vessel.dwt * 0.85, 400_000)), 1_000)
         year = st.selectbox("Year", list(range(2026, 2036)), index=0)
-        epl = st.number_input("EEXI speed cap from the engine power limitation (kn, 0 = none)",
-                              0.0, float(vessel.design_speed), 0.0, 0.5)
-        penalty = st.toggle("Price the FuelEU penalty into the optimum", value=False)
+        epl = st.number_input("EEXI speed cap (kn)", 0.0, float(vessel.design_speed), 0.0, 0.5,
+                              help="Top speed under the engine power limitation. 0 = no limitation.")
+        penalty = st.toggle("Price in the FuelEU penalty", value=False,
+                            help="Add the FuelEU deficit penalty to the cost the optimizer minimises.")
 
     side_section("Claude · your API key")
     if AGENTS:
@@ -390,14 +406,19 @@ def port_html(code: str, cls: str = "") -> str:
             f'<span class="co"> · {position(p.lat, p.lon)}</span></small></div>')
 
 
-st.markdown(
-    f'<div class="mo-hero"><div class="mo-passage">{port_html(origin)}<div class="mo-track"></div>'
-    f'{port_html(destination, "to")}</div><div class="mo-specs">'
-    + "".join(f'<div class="mo-spec k-{k.lower().replace(" ", "")}"><span>{k}</span>'
-              f'<b>{html.escape(v)}</b></div>' for k, v in specs)
-    + "</div></div>", unsafe_allow_html=True)
+def hero(note: str = "") -> None:
+    """The passage, port to port; ``note`` (the distance) sits on the track between them."""
+    track = f'<div class="mo-track">{f"<span>{html.escape(note)}</span>" if note else ""}</div>'
+    st.markdown(
+        f'<div class="mo-hero"><div class="mo-passage">{port_html(origin)}{track}'
+        f'{port_html(destination, "to")}</div><div class="mo-specs">'
+        + "".join(f'<div class="mo-spec k-{k.lower().replace(" ", "")}"><span>{k}</span>'
+                  f'<b>{html.escape(v)}</b></div>' for k, v in specs)
+        + "</div></div>", unsafe_allow_html=True)
+
 
 if origin == destination:
+    hero()
     st.warning("Origin and destination are the same port.", icon=":material/warning:")
     st.stop()
 
@@ -418,24 +439,38 @@ with st.spinner("Optimizing route and speed…"):
 
 late = False
 if not routes:
-    # The deadline is out of reach: show the quickest voyage the vessel can make instead of nothing.
     with st.spinner("Looking for the fastest voyage…"):
         fastest = fastest_voyage(graph, request)
     if fastest is None:
+        hero()
         st.error("No feasible route between these ports for this vessel and CII target.",
                  icon=":material/block:")
         st.stop()
+    floor = math.ceil(fastest.total_transit_hours) + 1
+    top = mean_speed(fastest)
+    if tmax < floor <= 5_000:
+        # The deadline asks for more speed than the vessel may sail: raise it to the limit and rerun.
+        limit = ("its design speed" if top >= vessel.design_speed - 0.05
+                 else "the EEXI speed cap" if epl and top >= epl - 0.05
+                 else "the fastest that keeps the CII rating at C")
+        st.session_state["raise_days"] = floor / 24
+        st.session_state["raised"] = (
+            f"**Deadline raised from {num(tmax / 24, 1)} to {floor / 24:.1f} days.** "
+            f"Anything shorter needs more than {top:.1f} kn, {limit}.")
+        st.rerun()
+    # Could not be raised (already at the limit): show the fastest voyage, flagged as late.
     routes, late = {FASTEST: fastest}, True
-    need = fastest.total_transit_hours / 24
     st.warning(f"**No route meets the {num(tmax / 24, 1)}-day deadline.** The quickest this vessel can "
-               f"make the voyage is **{need:.1f} days** at {mean_speed(fastest):.1f} kn, shown below. "
-               f"Allow at least {need:.1f} days and the optimizer will trade speed for cost again.",
-               icon=":material/timer_off:")
+               f"make the voyage is **{fastest.total_transit_hours / 24:.1f} days** at {top:.1f} kn, "
+               "shown below.", icon=":material/timer_off:")
 
 best_name, best = min(routes.items(), key=lambda kv: kv[1].total_cost_eur)
 other_name, other = next(((n, r) for n, r in routes.items() if n != best_name), (None, None))
 # Colour follows the role (optimal or alternative), the label says which corridor it is.
 route_slots = {n: ROUTE_SLOTS["optimal" if n == best_name else "alternative"] for n in routes}
+hero(f"{num(best.total_distance_nm)} NM")
+if "raised" in st.session_state:
+    st.info(st.session_state.pop("raised"), icon=":material/speed:")
 via = " · ".join(graph.ports[c].name for c in best.route_ports[1:-1] if not is_waypoint_node(c))
 st.markdown(headline_html(best_name, best, other_name, other, OPT_COLOR, tmax, f"via {via}" if via else ""),
             unsafe_allow_html=True)
@@ -452,36 +487,40 @@ tab_voyage, tab_report, tab_chat = st.tabs(
 
 # ------------------------------------------------------------------ voyage tab
 with tab_voyage:
-    cols = st.columns([1.0, 0.85, 1.2, 0.85, 1.2, 1.5])   # the status cards need more room
-    kpi = dict(height="stretch")
-    cols[0].metric("Cost", eur(best.total_cost_eur), icon=":material/euro:", **kpi)
-    cols[1].metric("Speed", f"{mean_speed(best):.2f} kn", icon=":material/speed:", **kpi)
     spare = tmax - best.total_transit_hours
     binding = spare < 0.5          # the deadline, not cost, is what sets the speed
-    cols[2].metric("Transit", f"{best.total_transit_hours / 24:.1f} days",
-                   f"{num(-spare)} h late" if late else "Deadline binding" if binding
-                   else f"{num(spare)} h spare",
-                   delta_color="red" if late else "orange" if binding else "off", delta_arrow="off",
-                   icon=":material/schedule:", **kpi)
-    cols[3].metric("CO₂", f"{num(best.total_co2_combustion_tons)} t", icon=":material/co2:", **kpi)
+    speed, nm = mean_speed(best), best.total_distance_nm
+    amber = STATUS["warning"]
+    tiles = [
+        tile("Cost", figure(eur(best.total_cost_eur)), f"{num(best.total_cost_eur / nm)} EUR per NM"),
+        tile("Speed", figure(f"{speed:.2f} kn"), f"{speed / vessel.design_speed:.0%} of "
+             f"{vessel.design_speed:.1f} kn design", gauge=(speed / vessel.design_speed, BLUE),
+             tip="Distance-weighted mean sailing speed against the vessel's design speed."),
+        tile("Transit", figure(f"{best.total_transit_hours / 24:.1f} days"),
+             f'<b style="color:{STATUS["critical"]}">{num(-spare)} h late</b>' if late
+             else f'<b style="color:{amber}">Deadline binding</b>' if binding else f"{num(spare)} h spare",
+             gauge=(best.total_transit_hours / tmax,
+                    STATUS["critical"] if late else amber if binding else BLUE),
+             tip="Transit time against the maximum transit time."),
+        tile("CO₂", figure(f"{num(best.total_co2_combustion_tons)} t"),
+             f"{num(best.total_co2_combustion_tons * 1000 / nm)} kg per NM"),
+    ]
     cii = best.cii_rating.value
     cii_status = "compliant" if best.cii_compliant else "non_compliant" if cii == "E" else "attention"
     cii_text = f"{cii} · " + ("compliant" if best.cii_compliant else "below target")
-    cols[4].markdown(status_card("CII rating", badge(cii_status, cii_text),
-                                 "Target: C or better"), unsafe_allow_html=True)
+    tiles.append(tile("CII rating", badge(cii_status, cii_text), "Target: C or better"))
     in_scope = fueleu_in_scope(best)
     gap = best.fueleu_intensity - best.fueleu_max_allowed
     if in_scope:
         fe = (badge("compliant", f"Compliant {gap:+.2f} g/MJ".replace("-", "−")) if best.fueleu_compliant
               else badge("attention", f"Deficit {gap:+.2f} g/MJ"))
-        cols[5].markdown(status_card("FuelEU", fe, "GHG vs the limit",
-                                     "Well-to-wake GHG intensity minus the FuelEU limit for the selected "
-                                     "year, in gCO₂e/MJ (positive = above the limit)."),
-                         unsafe_allow_html=True)
+        tiles.append(tile("FuelEU", fe, "GHG vs the limit",
+                          tip="Well-to-wake GHG intensity minus the FuelEU limit for the selected "
+                              "year, in gCO₂e/MJ (positive = above the limit)."))
     else:
-        cols[5].markdown(status_card("FuelEU", badge("info", "Not applicable"), "Outside EU scope",
-                                     "FuelEU Maritime applies only to voyages with an EU/EEA port."),
-                         unsafe_allow_html=True)
+        tiles.append(tile("FuelEU", badge("info", "Not applicable"), "Outside EU scope",
+                          tip="FuelEU Maritime applies only to voyages with an EU/EEA port."))
+    st.markdown(f'<div class="mo-kpis">{"".join(tiles)}</div>', unsafe_allow_html=True)
     if best.cii_speed_cap_factor < 1:
         st.info(f"CII retry: speed capped at {best.cii_speed_cap_factor:.0%} of the maximum "
                 "to reach rating C.", icon=":material/slow_motion_video:")
@@ -541,11 +580,14 @@ with tab_voyage:
         chart(hbar(names, [s["co2"] for s in segs], "t", ",.0f", x_title="t CO₂"))
     legs = [f"{graph.ports[leg.origin].name} → {graph.ports[leg.destination].name}" for leg in best.legs]
     with st.expander("Leg-by-leg data", icon=":material/table_rows:"):
-        st.dataframe(pd.DataFrame([{
-            "Leg": name, "Distance NM": round(leg.distance_nm, 1), "Speed kn": round(leg.speed_knots, 2),
-            "Fuel t": round(leg.fuel_consumed_tons, 2), "CO₂ t": round(leg.co2_combustion_tons, 2),
-            "Fuel EUR": round(leg.fuel_cost_eur), "ETS EUR": round(leg.ets_cost_eur),
-        } for name, leg in zip(legs, best.legs, strict=True)]), hide_index=True, width="stretch")
+        table = pd.DataFrame([{
+            "Leg": name, "Distance NM": leg.distance_nm, "Speed kn": leg.speed_knots,
+            "Fuel t": leg.fuel_consumed_tons, "CO₂ t": leg.co2_combustion_tons,
+            "Fuel EUR": leg.fuel_cost_eur, "ETS EUR": leg.ets_cost_eur,
+        } for name, leg in zip(legs, best.legs, strict=True)])
+        formats = {"Distance NM": 0, "Speed kn": 2, "Fuel t": 1, "CO₂ t": 1, "Fuel EUR": 0, "ETS EUR": 0}
+        st.dataframe(table.style.format({c: (lambda x, d=d: num(x, d)) for c, d in formats.items()}),
+                     hide_index=True, width="stretch")
     st.markdown('<div class="mo-cta"><div><b>Need this as a regulatory brief?</b><span>Open the '
                 '<b style="display:inline">AI report</b> tab: Claude writes a compliance summary of this '
                 'voyage (EU ETS, FuelEU, CII, ISO 14083) and every figure in it is checked against the '
@@ -645,7 +687,7 @@ with tab_chat:
                     + KEY_HELP)
     elif not history:
         st.caption("Suggested questions")
-        for col, text in zip(st.columns(len(SUGGESTIONS)), SUGGESTIONS, strict=True):
+        for col, text in zip(st.columns(2) * 2, SUGGESTIONS, strict=True):   # two per row: no cut labels
             if col.button(text, width="stretch"):
                 pending = text
     for turn in history:
