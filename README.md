@@ -26,8 +26,6 @@ Every regulatory number lives in a CSV that cites its legal source, so the model
 
 **[Open the live app](https://maritime-optimizer.streamlit.app)** · pick two ports, a deadline and a vessel and get the optimized voyage on a map; ask Claude for a compliance report or questions with your own API key ([details](#interactive-app)). Try [Valencia → Singapore, Suez vs Cape](https://maritime-optimizer.streamlit.app/?origin=ESVLC&destination=SGSIN&compare=1).
 
-**Live dashboards:** [E1](https://alejandrovinuesa.github.io/maritime-optimizer/e1.html) · [E2](https://alejandrovinuesa.github.io/maritime-optimizer/e2.html) · [E3](https://alejandrovinuesa.github.io/maritime-optimizer/e3.html) · [E4](https://alejandrovinuesa.github.io/maritime-optimizer/e4.html) · [E5](https://alejandrovinuesa.github.io/maritime-optimizer/e5.html)
-
 ## Install
 
 ```bash
@@ -49,6 +47,7 @@ maritime-opt route SGSIN NLRTM --vessel lr2_lng_tanker --tmax 1500 --avoid SUEZ
 maritime-opt scenario E3          # fuel comparison HFO / MGO / LNG / BioLNG
 maritime-opt vessels              # example fleet
 maritime-opt ports                # available ports
+maritime-opt dashboard all        # one static HTML page per scenario (needs the viz extra)
 ```
 
 Add `--json` to any `route` or `scenario` command for machine-readable output.
@@ -69,24 +68,6 @@ print(result.cii_rating, result.fueleu_compliant, result.iso14083_intensity)
 ```
 
 See [`examples/quickstart.py`](examples/quickstart.py).
-
-## Dashboards
-
-```bash
-pip install -e ".[viz]"
-maritime-opt dashboard all --out dashboards     # five self-contained HTML pages + index.html
-
-pip install -e ".[app]"
-streamlit run app/streamlit_app.py             # interactive app: ports, deadline, vessel → optimized voyage on a map
-```
-
-[![Suez vs Cape of Good Hope dashboard](docs/img/dashboard_e5.png)](https://alejandrovinuesa.github.io/maritime-optimizer/e5.html)
-
-Each HTML dashboard has KPI tiles (cost, speed, CO₂, CII rating, FuelEU status, ISO 14083 intensity), the route map, the cost breakdown and scenario-specific charts. Every chart has hover tooltips and a data table, light and dark mode follow the system setting, and the data notice is printed in the footer. Pre-built copies live in [`examples/dashboards/`](examples/dashboards/) and are published on GitHub Pages by [`pages.yml`](.github/workflows/pages.yml).
-
-| | |
-|---|---|
-| [![E3](docs/img/dashboard_e3.png)](https://alejandrovinuesa.github.io/maritime-optimizer/e3.html) **E3** fuel choice | [![E4](docs/img/dashboard_e4.png)](https://alejandrovinuesa.github.io/maritime-optimizer/e4.html) **E4** carbon price |
 
 ## Interactive app
 
