@@ -1,0 +1,196 @@
+/* Maritime Optimizer: a chart-table look. Flat surfaces, hairlines, condensed lettering for
+   names and labels, monospaced figures. Colours come from viz/theme.py through --mo-* variables. */
+:root{--mo-cond:"IBM Plex Sans Condensed","IBM Plex Sans","Arial Narrow",sans-serif;
+  --mo-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;--mo-r:4px}
+
+[data-testid="stHeader"]{background:transparent}
+/* Streamlit chrome visitors should not see. stToolbar stays: it holds the sidebar toggle. */
+[data-testid="stMainMenu"],[data-testid="stAppDeployButton"],
+[data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none!important}
+/* The content starts below the toolbar band, so the host's buttons (Share, GitHub…) never sit on it. */
+.block-container{padding-top:3.6rem;max-width:1280px}
+h1,h2,h3,h4{letter-spacing:-.01em}
+.mo-num{font-family:var(--mo-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+/* sidebar: the brand shares the row of the collapse button, so the inputs start higher */
+[data-testid="stSidebarHeader"]{height:2.6rem;min-height:0;padding-top:.9rem;padding-bottom:0;
+  margin-bottom:-1.75rem;position:relative;z-index:2;pointer-events:none}
+[data-testid="stSidebarHeader"] *{pointer-events:auto}
+[data-testid="stSidebarUserContent"]{padding-top:0}
+.mo-brand{display:flex;gap:11px;align-items:center;margin:0 0 12px;white-space:nowrap}
+.mo-brand .mark{width:36px;height:36px;border-radius:var(--mo-r);display:grid;place-items:center;flex:none;
+  background:var(--mo-blue)}
+.mo-brand b{display:block;font:600 17px/1.15 var(--mo-cond);letter-spacing:.02em;text-transform:uppercase;
+  color:var(--mo-ink)}
+.mo-brand small{color:var(--mo-ink2);font-size:12px}
+.mo-side{font:600 12.5px/1.2 var(--mo-cond);letter-spacing:.09em;text-transform:uppercase;color:var(--mo-ink2);
+  margin:8px 0 0;padding:12px 0 5px;border-top:1px solid var(--mo-border)}
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.7rem}
+
+/* header: the passage, port to port, with LOCODE and position as on a chart */
+.mo-hero{padding:0 0 14px;margin-bottom:16px;border-bottom:1px solid var(--mo-border)}
+.mo-passage{display:flex;align-items:flex-start;gap:22px}
+.mo-port b{display:block;font:600 clamp(30px,3.6vw,46px)/1 var(--mo-cond);letter-spacing:.012em;
+  text-transform:uppercase;color:var(--mo-ink)}
+.mo-port small{display:block;margin-top:8px;font:400 12.5px/1.2 var(--mo-mono);color:var(--mo-ink2)}
+.mo-port.to{text-align:right}
+.mo-track{flex:1 1 60px;min-width:28px;position:relative;height:0;
+  border-top:2px dashed color-mix(in srgb,var(--mo-muted) 75%,transparent);margin-top:clamp(14px,1.75vw,22px)}
+.mo-track::after{content:"";position:absolute;right:-2px;top:-7px;border:6px solid transparent;border-right:0;
+  border-left:10px solid var(--mo-muted)}
+.mo-track span{position:absolute;left:50%;top:-10px;transform:translateX(-50%);padding:0 12px;
+  background:var(--mo-page);font:400 12.5px/18px var(--mo-mono);color:var(--mo-ink);white-space:nowrap}
+.mo-track::before{content:"";position:absolute;left:-2px;top:-5px;width:8px;height:8px;border-radius:50%;
+  background:var(--mo-muted)}
+.mo-specs{display:flex;flex-wrap:wrap;gap:8px 30px;margin-top:16px}
+.mo-spec span{display:block;font:500 12px/1.3 var(--mo-cond);letter-spacing:.07em;text-transform:uppercase;
+  color:var(--mo-ink2)}
+.mo-spec b{font-size:14px;font-weight:500;color:var(--mo-ink)}
+
+/* headline: the result in three ledger cells, before the supporting numbers */
+.mo-headline{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);
+  border:1px solid var(--mo-border);border-radius:var(--mo-r);background:var(--mo-surface);margin-bottom:16px}
+.mo-headline>div{padding:14px 22px 16px;border-left:1px solid var(--mo-border);min-width:0}
+.mo-headline>div:first-child{border-left:0}
+.mo-headline .lead{font:600 12.5px/1.2 var(--mo-cond);letter-spacing:.09em;text-transform:uppercase;
+  color:var(--mo-ink2);margin-bottom:8px}
+.mo-headline .big{font:600 clamp(1.45rem,2.5vw,2rem)/1.15 var(--mo-cond);letter-spacing:.005em;
+  font-variant-numeric:tabular-nums;color:var(--mo-ink);white-space:nowrap}
+.mo-headline .big.name{display:flex;align-items:center;gap:12px}
+/* the same stroke as the route on the map and in its legend */
+.mo-headline .big.name i{flex:none;width:26px;height:5px;border-radius:3px;background:var(--mo-route,var(--mo-opt))}
+.mo-headline .meta{font-size:13px;color:var(--mo-ink2);margin-top:6px}
+.mo-headline .late{color:#f0a3a3}
+
+/* instrument row: four figures and two ratings, each with a line of context; speed and transit
+   carry a gauge against their limit */
+.mo-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) repeat(2,minmax(0,1.15fr));gap:12px;
+  margin:2px 0 16px}
+.mo-kpi{display:flex;flex-direction:column;min-width:0;min-height:128px;box-sizing:border-box;
+  padding:15px 18px 14px;background:var(--mo-surface);border:1px solid var(--mo-border);border-radius:var(--mo-r)}
+.mo-kpi .lbl{font:500 12.5px/1.3 var(--mo-cond);letter-spacing:.09em;text-transform:uppercase;
+  color:var(--mo-ink2);margin-bottom:10px;white-space:nowrap}
+.mo-kpi .val{font:600 clamp(1.5rem,2.1vw,1.9rem)/1.05 var(--mo-cond);letter-spacing:.005em;
+  font-variant-numeric:tabular-nums;color:var(--mo-ink);white-space:nowrap}
+.mo-kpi .val small{font:500 .5em/1 var(--mo-cond);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--mo-ink2);margin-left:6px}
+.mo-kpi .gauge{height:4px;border-radius:2px;background:color-mix(in srgb,var(--mo-ink2) 18%,transparent);
+  margin-top:11px;overflow:hidden}
+.mo-kpi .gauge i{display:block;height:100%;border-radius:2px}
+.mo-kpi .sub{font-size:12.5px;line-height:1.35;color:var(--mo-ink2);margin-top:auto;padding-top:9px}
+.mo-kpi .sub b{font-weight:600}
+.mo-kpi .mo-badge{align-self:flex-start;margin-top:3px}
+.mo-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px 3px 4px;border-radius:999px;
+  white-space:nowrap;font-weight:600;font-size:12px;line-height:1.25;border:1px solid;
+  color:color-mix(in srgb,var(--c) 55%,#fff)!important}
+.mo-badge i{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;color:#0b1424;
+  font-style:normal;font-size:11px;font-weight:800}
+@media (max-width:1150px){.mo-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* itinerary: a timeline, stops on a line, distance and speed above each stretch */
+.mo-tl{display:flex;align-items:flex-start;padding:26px 4px 4px;margin-bottom:6px}
+.mo-tl-stop{flex:0 0 16px;width:16px;display:flex;flex-direction:column;align-items:center}
+.mo-tl-stop.first{align-items:flex-start}
+.mo-tl-stop.last{align-items:flex-end}
+.mo-tl-stop .dot{width:16px;height:16px;border-radius:50%;box-sizing:border-box;flex:none;
+  border:3px solid var(--mo-route,var(--mo-opt));background:var(--mo-surface)}
+.mo-tl-stop.first .dot,.mo-tl-stop.last .dot{background:var(--mo-route,var(--mo-opt))}
+.mo-tl-stop.canal .dot{border-style:dashed}
+.mo-tl-stop .lab{margin-top:9px;white-space:nowrap;text-align:center;line-height:1.3}
+.mo-tl-stop.first .lab{text-align:left}
+.mo-tl-stop.last .lab{text-align:right}
+.mo-tl-stop .lab b{display:block;font-size:14.5px;font-weight:600;color:var(--mo-ink)}
+.mo-tl-stop .lab small{font:400 11.5px/1.3 var(--mo-mono);color:var(--mo-ink2)}
+.mo-tl-seg{flex:1 1 0;min-width:70px;height:16px;position:relative}
+.mo-tl-seg::before{content:"";position:absolute;left:0;right:0;top:6.5px;height:3px;border-radius:2px;
+  background:var(--mo-route,var(--mo-opt))}
+.mo-tl-seg span{position:absolute;bottom:100%;left:0;right:0;margin-bottom:4px;text-align:center;
+  font:400 12px/1.3 var(--mo-mono);color:var(--mo-ink2);white-space:nowrap}
+
+/* cards and lists */
+.mo-card-title{font:600 13px/1.3 var(--mo-cond);letter-spacing:.09em;text-transform:uppercase;
+  color:var(--mo-ink2);margin-bottom:2px}
+.mo-legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:10px 2px 0;font-size:12.5px;color:var(--mo-ink2)}
+.mo-legend span{display:inline-flex;align-items:center;gap:7px}
+.mo-legend i{width:10px;height:10px;border-radius:2px}
+/* cost ledger: rows on hairlines, figures in a column, total at the foot */
+.mo-costs{margin:14px 2px 4px;border-top:1px solid var(--mo-border)}
+.mo-cost{display:grid;grid-template-columns:10px 1fr auto 44px;align-items:center;gap:12px;font-size:13.5px;
+  padding:9px 4px;border-bottom:1px solid var(--mo-border)}
+.mo-cost .sw{width:10px;height:10px;border-radius:2px}
+.mo-cost b{font:500 13px/1.3 var(--mo-mono);letter-spacing:-.02em}
+.mo-cost small{font:400 12px/1.3 var(--mo-mono);color:var(--mo-ink2);text-align:right}
+.mo-cost.total{border-bottom:0;font-weight:600;color:var(--mo-ink)}
+.mo-cost.total b{font-weight:600}
+.mo-status{border-radius:var(--mo-r);padding:14px 16px;border:1px solid var(--mo-border);height:100%;
+  background:var(--mo-surface)}
+.mo-status .head{display:flex;align-items:center;gap:9px;font-weight:600}
+.mo-status .dot{width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;
+  color:#fff;font-size:12px;font-weight:700}
+.mo-status .lbl{font:500 12px/1.3 var(--mo-cond);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mo-ink2);margin:4px 0 8px 29px}
+.mo-status p{font-size:13px;margin:0;color:var(--mo-ink2)}
+.mo-empty{padding:22px 24px;margin-bottom:16px;border:1px dashed var(--mo-border);border-radius:var(--mo-r)}
+.mo-empty b{display:block;font-size:16px;font-weight:600;margin-bottom:6px;color:var(--mo-ink)}
+.mo-empty p{margin:0;color:var(--mo-ink2);font-size:13.5px}
+.mo-empty a{color:#6aa8f0}
+.mo-foot{font-size:12.5px;color:var(--mo-ink2);margin-top:32px;border-top:1px solid var(--mo-border);
+  padding-top:14px;line-height:1.6}
+.mo-foot a{color:#8dbcf5;text-decoration:underline;text-underline-offset:2px}
+.mo-by{margin-top:8px;color:var(--mo-ink2)}
+.mo-foot b{color:var(--mo-ink)}
+
+/* buttons: one shape and one set of states everywhere; the primary is the only filled one */
+.stButton button,.stDownloadButton button{min-height:2.5rem;border-radius:var(--mo-r);font-weight:500;
+  transition:background .12s,border-color .12s,color .12s}
+.stButton button[kind="secondary"]:hover,.stDownloadButton button:hover{border-color:var(--mo-blue);
+  color:var(--mo-ink);background:color-mix(in srgb,var(--mo-blue) 12%,transparent)}
+.stButton button:focus-visible,.stDownloadButton button:focus-visible{outline:2px solid var(--mo-blue);
+  outline-offset:2px}
+.stButton button[kind="primary"]{font-weight:600;letter-spacing:.01em}
+.stButton button:disabled{opacity:.55}
+[data-testid="stTab"]{display:flex;align-items:center;padding-inline:2px;margin-right:14px}
+[data-testid="stTab"] p{font-size:14.5px}
+.mo-cta{margin-top:14px;padding:14px 18px;border-radius:var(--mo-r);border:1px dashed var(--mo-border)}
+.mo-cta b{display:block;font-size:15px;color:var(--mo-ink);margin-bottom:2px}
+.mo-cta span{font-size:13.5px;color:var(--mo-ink2)}
+
+@media (max-width:767px){
+  .block-container{padding:3.2rem 1rem 2rem}
+  .mo-hero{padding-bottom:10px;margin-bottom:12px}
+  .mo-passage{gap:12px}
+  .mo-port b{font-size:25px}
+  .mo-port small{margin-top:5px;font-size:11.5px}
+  .mo-port small .co{display:none}
+  .mo-track{margin-top:12px}
+  /* header metadata as compact running text, so the headline below shows without scrolling */
+  .mo-specs{display:block;font-size:13px;line-height:1.55;margin-top:10px}
+  .mo-spec{display:inline}
+  .mo-spec.k-euaprice{display:none}
+  .mo-spec span{display:none;font:400 13px/1.55 inherit;letter-spacing:0;text-transform:none;color:var(--mo-muted)}
+  .mo-spec.k-deadline span{display:inline}
+  .mo-spec.k-deadline span::after{content:" "}
+  .mo-spec b{font-size:13px;font-weight:500;color:var(--mo-ink2)}
+  .mo-spec:not(:last-child) b::after{content:" · ";color:var(--mo-muted);white-space:pre}
+  /* one cell per row; the figure and its note share a line */
+  .mo-headline{grid-template-columns:1fr}
+  .mo-headline>div{padding:9px 14px 10px;border-left:0;border-top:1px solid var(--mo-border);
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:0 10px}
+  .mo-headline>div:first-child{border-top:0}
+  .mo-headline .lead{flex:0 0 100%;margin-bottom:3px}
+  .mo-headline .big{font-size:1.35rem}
+  .mo-headline .big.name i{align-self:center}
+  .mo-headline .meta{font-size:12.5px;margin-top:0}
+  /* instrument row two per column */
+  .mo-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .mo-kpi{min-height:112px;padding:12px 14px}
+  .mo-track span{display:none}
+  .mo-tl{flex-direction:column;align-items:stretch;padding-top:6px}
+  .mo-tl-stop,.mo-tl-stop.first,.mo-tl-stop.last{flex:none;width:auto;flex-direction:row;align-items:center;gap:12px}
+  .mo-tl-stop .lab,.mo-tl-stop.first .lab,.mo-tl-stop.last .lab{margin-top:0;text-align:left}
+  .mo-tl-seg{flex:none;height:auto;min-height:46px;margin-left:6.5px;
+    border-left:3px solid var(--mo-route,var(--mo-opt));
+    padding-left:22px;display:flex;align-items:center}
+  .mo-tl-seg::before{display:none}
+  .mo-tl-seg span{position:static;margin:0}
+}

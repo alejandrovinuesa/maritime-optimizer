@@ -8,9 +8,13 @@ secondaryBackgroundColor = "#111d33"
 textColor = "#f2f5fa"
 borderColor = "#22314f"
 linkColor = "#6aa8f0"
-baseRadius = "0.5rem"
+baseRadius = "0.25rem"
 showWidgetBorder = true
+# Three Plex faces (one font per source URL): Sans for text, Condensed for names and labels,
+# Mono for figures. app/style.css uses the last two by name.
 font = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "IBM Plex Sans Condensed:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap, sans-serif"
+codeFont = "IBM Plex Mono:https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap, monospace"
 chartCategoricalColors = ["#3987e5", "#d95926", "#199e70", "#c98500"]
 
 [theme.sidebar]

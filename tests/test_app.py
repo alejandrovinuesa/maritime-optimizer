@@ -18,6 +18,11 @@ def run_app(**state):
     return at.run()
 
 
+def kpis(at) -> str:
+    """The instrument row: cost, speed, transit, CO₂, CII and FuelEU tiles."""
+    return next(m.value for m in at.markdown if m.value.startswith('<div class="mo-kpis"'))
+
+
 def texts(elements):
     return " ".join(str(e.value) for e in elements)
 
@@ -26,7 +31,7 @@ def test_voyage_tab_renders_without_key(graph, monkeypatch):
     monkeypatch.delenv("MARITIME_OPT_ALLOW_SERVER_KEY", raising=False)
     at = run_app()
     assert not at.exception
-    assert [m.label for m in at.metric][:2] == ["Cost", "Speed"]
+    assert ">Cost<" in kpis(at) and ">Speed<" in kpis(at)
     assert "Enter your Anthropic API key" in texts(at.info)
     assert at.chat_input[0].disabled
 
@@ -118,3 +123,54 @@ def test_query_params_preset_the_scenario(graph):
     assert at.sidebar.toggle[0].value is True                     # Suez vs Cape comparison on
     assert at.sidebar.selectbox[2].value == "panamax_bulker"            # invalid → default vessel
 
+
+def test_transit_card_deadline_binding_chip(graph):
+    at = run_app()                                   # Valencia → Rotterdam: slack to spare
+    assert "h spare" in kpis(at) and "Deadline binding" not in kpis(at)
+    at = run_app(origin="ESVLC", destination="SGSIN")
+    at.sidebar.toggle[0].set_value(True).run()       # the Cape route sails at the deadline
+    assert "Deadline binding" in kpis(at) and "h spare" not in kpis(at)
+
+
+def test_corridor_comparison_only_where_it_applies(graph):
+    at = run_app()                                   # Valencia → Rotterdam: neither Suez nor the Cape
+    assert at.sidebar.toggle[0].disabled
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.query_params.update(compare="1")              # a shared link cannot force it on
+    at.run()
+    assert not at.exception and at.sidebar.toggle[0].value is False
+    at = run_app(origin="ESVLC", destination="SGSIN")
+    assert not at.sidebar.toggle[0].disabled
+
+
+def headline(at) -> str:
+    return next(m.value for m in at.markdown if m.value.startswith('<div class="mo-headline"'))
+
+
+def test_deadline_out_of_reach_is_raised_to_the_fastest_voyage(graph):
+    """A deadline that needs more speed than the vessel may sail is raised to the limit."""
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.query_params.update(origin="ESVLC", destination="SGSIN", hours="480")
+    at.run()
+    assert not at.exception and not at.error
+    note = texts(at.info)
+    assert "Deadline raised from 20.0 to" in note and " kn, " in note
+    days = at.session_state["days"]
+    assert 20 < days < 62.5 and at.sidebar.number_input[0].value == days
+    assert "Optimal route" in headline(at) and "h late" not in kpis(at)
+    assert "Deadline binding" in kpis(at)            # it sails at the limit, exactly on the deadline
+    # An hour less than the limit is out of reach again: the limit is tight.
+    at.sidebar.number_input[0].set_value(days - 2 / 24).run()
+    assert "Deadline raised from" in texts(at.info) and at.session_state["days"] == days
+    # A reachable deadline is left alone.
+    at.sidebar.number_input[0].set_value(days + 5).run()
+    assert "Deadline raised" not in texts(at.info) and at.session_state["days"] == days + 5
+
+
+def test_tight_deadline_falls_back_to_the_quicker_corridor(graph):
+    """The Cape is cheapest but too slow for 800 h: the Suez route must be found, not an error."""
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.query_params.update(origin="ESVLC", destination="SGSIN", hours="800")
+    at.run()
+    assert not at.exception and not at.error
+    assert "Optimal route" in headline(at) and "Suez Canal" in headline(at)

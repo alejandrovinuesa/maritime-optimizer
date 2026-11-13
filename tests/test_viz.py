@@ -42,9 +42,13 @@ def test_streamlit_app_runs(graph):
     assert not at.exception
     hero = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-hero"'))
     assert "Valencia" in hero and "Rotterdam" in hero
-    # four metric cards plus the CII and FuelEU status cards
-    assert len(at.metric) == 4 and sum("mo-kpi" in m.value for m in at.markdown) == 2
-    at.sidebar.toggle[0].set_value(True).run()               # Suez vs Cape comparison
+    # four figures plus the CII and FuelEU ratings, in one instrument row
+    row = next(m.value for m in at.markdown if m.value.startswith('<div class="mo-kpis"'))
+    assert row.count('class="mo-kpi"') == 6 and row.count('class="val"') == 4
+    assert at.sidebar.toggle[0].disabled                     # no Suez-or-Cape choice on this voyage
+    at = AppTest.from_file(str(APP), default_timeout=60)
+    at.session_state["destination"] = "SGSIN"
+    at.run().sidebar.toggle[0].set_value(True).run()         # Suez vs Cape comparison
     assert not at.exception
 
 
@@ -64,3 +68,22 @@ def test_apply_theme_recolours_for_dark_mode(graph, e5_like_rows=None):
     bars = apply_theme(cost_breakdown([("A", r)]), "dark")
     assert bars.data[0].marker.color == DARK["series"][bars.data[0].meta["slot"]]
 
+
+def test_route_map_labels_hover_targets_and_leaders(graph):
+    from maritime_optimizer import compare_canal_routes, load_vessels_from_csv
+    from maritime_optimizer.scenarios import build_request
+    from maritime_optimizer.viz.figures import route_map
+    vessel = next(iter(load_vessels_from_csv().values()))
+    found = compare_canal_routes(graph, build_request(vessel, origin_port="ESVLC",
+                                                      destination_port="SGSIN", max_transit_hours=2000.0))
+    routes = {"Via Suez": found["suez"], "Via the Cape": found["cape"]}
+    fig = route_map(graph, routes, {"Via Suez": 6, "Via the Cape": 0}, primary="Via the Cape",
+                    labels={n: f"<b>{n}</b><br>1 NM" for n in routes})
+    hover = [t for t in fig.data if t.hoverinfo == "text" and t.marker.opacity == 0]
+    assert len(hover) == len(routes)                 # hover targets for every route, with or without labels
+    labels = [t for t in fig.data if isinstance(t.meta, dict) and t.meta.get("role") == "label"]
+    assert len(labels) == 2 and all(t.textposition for t in labels)
+    thick = next(t for t in fig.data if t.name == "Via the Cape")
+    thin = next(t for t in fig.data if t.name == "Via Suez")
+    assert thick.line.width > thin.line.width and thin.line.dash == "dash" and thin.opacity < 1
+    assert len([t for t in fig.data if t.mode == "lines+markers"]) == 2     # one leader line per label
