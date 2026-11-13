@@ -17,12 +17,13 @@ h1,h2,h3,h4{letter-spacing:-.01em}
   margin-bottom:-1.75rem;position:relative;z-index:2;pointer-events:none}
 [data-testid="stSidebarHeader"] *{pointer-events:auto}
 [data-testid="stSidebarUserContent"]{padding-top:0}
-.mo-brand{display:flex;gap:11px;align-items:center;margin:0 0 12px;white-space:nowrap}
-.mo-brand .mark{width:36px;height:36px;border-radius:var(--mo-r);display:grid;place-items:center;flex:none;
+/* the right 34px of the row belong to the collapse button */
+.mo-brand{display:flex;gap:9px;align-items:center;margin:0 0 12px;white-space:nowrap;padding-right:34px}
+.mo-brand .mark{width:32px;height:32px;border-radius:var(--mo-r);display:grid;place-items:center;flex:none;
   background:var(--mo-blue)}
-.mo-brand b{display:block;font:600 17px/1.15 var(--mo-cond);letter-spacing:.02em;text-transform:uppercase;
+.mo-brand b{display:block;font:600 15px/1.15 var(--mo-cond);letter-spacing:.015em;text-transform:uppercase;
   color:var(--mo-ink)}
-.mo-brand small{color:var(--mo-ink2);font-size:12px}
+.mo-brand small{color:var(--mo-ink2);font-size:11.5px}
 .mo-side{font:600 12.5px/1.2 var(--mo-cond);letter-spacing:.09em;text-transform:uppercase;color:var(--mo-ink2);
   margin:8px 0 0;padding:12px 0 5px;border-top:1px solid var(--mo-border)}
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.7rem}
@@ -61,6 +62,13 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 .mo-headline .big.name i{flex:none;width:26px;height:5px;border-radius:3px;background:var(--mo-route,var(--mo-opt))}
 .mo-headline .meta{font-size:13px;color:var(--mo-ink2);margin-top:6px}
 .mo-headline .late{color:#f0a3a3}
+.mo-headline .nm{display:none}
+.mo-headline>.why{grid-column:1/-1;border-left:0;border-top:1px solid var(--mo-border);padding:9px 22px 10px;
+  font-size:13px;color:#e8b04a}
+/* a secondary remark in one line, not a banner */
+.mo-note{margin:-4px 0 16px;padding:6px 12px;border-left:3px solid #e8b04a;font-size:13px;line-height:1.45;
+  color:var(--mo-ink2)}
+.mo-note b{color:var(--mo-ink);font-weight:600}
 
 /* instrument row: four figures and two ratings, each with a line of context; speed and transit
    carry a gauge against their limit */
@@ -185,6 +193,7 @@ h1,h2,h3,h4{letter-spacing:-.01em}
   .mo-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .mo-kpi{min-height:112px;padding:12px 14px}
   .mo-track span{display:none}
+  .mo-headline .nm{display:inline}
   .mo-tl{flex-direction:column;align-items:stretch;padding-top:6px}
   .mo-tl-stop,.mo-tl-stop.first,.mo-tl-stop.last{flex:none;width:auto;flex-direction:row;align-items:center;gap:12px}
   .mo-tl-stop .lab,.mo-tl-stop.first .lab,.mo-tl-stop.last .lab{margin-top:0;text-align:left}

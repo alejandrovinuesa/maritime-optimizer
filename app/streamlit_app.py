@@ -272,14 +272,21 @@ def figure(text: str) -> str:
 
 
 def headline_html(title: str, best, other_name: str | None, other, color: str, tmax: float,
-                  via: str = "") -> str:
-    """The result in three cells: which route, what it costs or saves, how long it takes."""
+                  via: str = "", why: str = "") -> str:
+    """The result in three cells: which route, what it costs or saves, how long it takes.
+
+    The distance is on the header track, so the route cell says how the voyage goes instead.
+    ``why`` is a line under the cells for a result that needs explaining.
+    """
     esc = html.escape
     days = best.total_transit_hours / 24
     spare = tmax - best.total_transit_hours
+    # A phone has no room for the distance on the header track: it leads this line there instead.
+    nm = f'<span class="nm">{num(best.total_distance_nm)} NM · </span>'
     if other is None:
-        route = (f'<div class="big">{num(best.total_distance_nm)} NM</div>'
-                 f'<div class="meta">{esc(via) or "Direct"}</div>')
+        legs = via.count(" · ") + 2 if via else 1
+        route = (f'<div class="big">{f"{legs} legs" if via else "Direct"}</div>'
+                 f'<div class="meta">{nm}{esc(via) or "No port or canal on the way"}</div>')
         cost = (f'<div class="big">{eur(best.total_cost_eur)}</div>'
                 f'<div class="meta">{mean_speed(best):.1f} kn mean speed</div>')
         slack = (f'<span class="late">{num(-spare)} h over the deadline</span>' if spare < -0.5
@@ -291,7 +298,7 @@ def headline_html(title: str, best, other_name: str | None, other, color: str, t
         extra = (best.total_transit_hours - other.total_transit_hours) / 24
         vs = esc(other_name.removeprefix("Via "))
         route = (f'<div class="big name"><i></i>{esc(title)}</div>'
-                 f'<div class="meta">{num(best.total_distance_nm)} NM</div>')
+                 f'<div class="meta">{nm}{esc(via) or "Direct"}</div>')
         title = "Optimal route"
         cost = (f'<div class="big">saves {eur(saving)}</div>'
                 f'<div class="meta">−{pct:.0f} % vs {vs} ({eur(other.total_cost_eur)})</div>'
@@ -302,7 +309,8 @@ def headline_html(title: str, best, other_name: str | None, other, color: str, t
     return (f'<div class="mo-headline" style="--mo-route:{color}">'
             f'<div><div class="lead">{esc(title)}</div>{route}</div>'
             f'<div><div class="lead">Cost</div>{cost}</div>'
-            f'<div><div class="lead">Time</div>{time}</div></div>')
+            f'<div><div class="lead">Time</div>{time}</div>'
+            + (f'<div class="why">{esc(why)}</div>' if why else "") + "</div>")
 
 
 graph = get_graph()
@@ -437,6 +445,12 @@ with st.spinner("Optimizing route and speed…"):
         result = cheapest_voyage(graph, request)
         routes = {"Optimal route": result} if result else {}
 
+# Asked to compare, but only one corridor makes the deadline: say so, or the headline just switches.
+why = ""
+if corridors and len(routes) == 1:
+    lost = next(n for k, n in names.items() if k not in found).removeprefix("Via ")
+    why = (f"{lost[0].upper()}{lost[1:]} is not feasible within the {tmax / 24:g}-day deadline: "
+           f"only {next(iter(routes)).removeprefix('Via ')} makes it.")
 late = False
 if not routes:
     with st.spinner("Looking for the fastest voyage…"):
@@ -472,8 +486,8 @@ hero(f"{num(best.total_distance_nm)} NM")
 if "raised" in st.session_state:
     st.info(st.session_state.pop("raised"), icon=":material/speed:")
 via = " · ".join(graph.ports[c].name for c in best.route_ports[1:-1] if not is_waypoint_node(c))
-st.markdown(headline_html(best_name, best, other_name, other, OPT_COLOR, tmax, f"via {via}" if via else ""),
-            unsafe_allow_html=True)
+st.markdown(headline_html(best_name, best, other_name, other, OPT_COLOR, tmax,
+                          f"via {via}" if via else "", why), unsafe_allow_html=True)
 
 # A new voyage invalidates the previous AI report (the chat keeps its history).
 voyage_id = hashlib.sha256(json.dumps(
@@ -530,9 +544,10 @@ with tab_voyage:
     if in_scope and not best.fueleu_compliant:
         priced = best.total_fueleu_penalty_eur > 0
         fine = best.total_fueleu_penalty_eur if priced else voyage_fueleu_penalty_eur(best)
-        st.warning(f"FuelEU deficit: estimated penalty **{eur(fine)}** "
-                   f"({'included in' if priced else 'not in'} the voyage cost). Pooling, banking and "
-                   "borrowing are not modelled and could avoid it.", icon=":material/gavel:")
+        # One line: the FuelEU tile already says "Deficit", this only adds what it costs.
+        st.markdown(f'<div class="mo-note"><b>FuelEU deficit</b> · estimated penalty <b>{eur(fine)}</b>, '
+                    f"{'included in' if priced else 'not in'} the voyage cost. Pooling, banking and "
+                    "borrowing are not modelled and could avoid it.</div>", unsafe_allow_html=True)
 
     with st.container(border=True):
         card_title("Route" + (f" · cheapest: {best_name}" if len(routes) > 1 else ""))
