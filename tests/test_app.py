@@ -92,11 +92,12 @@ def test_forget_key_clears_it(graph, monkeypatch):
 
 def test_fueleu_deficit_note_and_out_of_scope_voyage(graph, monkeypatch):
     at = run_app()                                   # Valencia → Rotterdam on HFO: deficit
-    note = texts(at.warning)
+    note = texts(at.markdown)
     assert "estimated penalty" in note and "Pooling, banking and borrowing" in note
+    assert "estimated penalty" not in texts(at.warning)        # a one-line note, not a banner
     at = run_app(origin="AEJEA", destination="BRSSZ")  # no EU port: FuelEU does not apply
     fueleu = next(m.value for m in at.markdown if "mo-kpi" in m.value and ">FuelEU<" in m.value)
-    assert "Not applicable" in fueleu and "estimated penalty" not in texts(at.warning)
+    assert "Not applicable" in fueleu and "estimated penalty" not in texts(at.markdown)
 
 
 def test_headline_and_status_badges(graph):
@@ -174,3 +175,15 @@ def test_tight_deadline_falls_back_to_the_quicker_corridor(graph):
     at.run()
     assert not at.exception and not at.error
     assert "Optimal route" in headline(at) and "Suez Canal" in headline(at)
+
+
+def test_headline_says_why_a_corridor_dropped_out_and_keeps_the_distance_on_the_header(graph):
+    at = run_app(origin="ESVLC", destination="SGSIN")
+    at.sidebar.toggle[0].set_value(True).run()       # both corridors make the default deadline
+    assert "not feasible" not in headline(at)
+    assert headline(at).count(" NM") == 1 and 'class="nm"' in headline(at)   # shown on phones only
+    at.sidebar.number_input[0].set_value(45.0).run()  # the Cape cannot make 45 days
+    assert not at.exception
+    assert "The Cape is not feasible within the 45-day deadline" in headline(at)
+    assert "Via Suez" in headline(at)
+
