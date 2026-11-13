@@ -63,8 +63,11 @@ h1,h2,h3,h4{letter-spacing:-.01em}
 .mo-headline .meta{font-size:13px;color:var(--mo-ink2);margin-top:6px}
 .mo-headline .late{color:#f0a3a3}
 .mo-headline .nm{display:none}
-.mo-headline>.why{grid-column:1/-1;border-left:0;border-top:1px solid var(--mo-border);padding:9px 22px 10px;
-  font-size:13px;color:#e8b04a}
+/* a route named by its passages: smaller than a figure, and free to wrap */
+.mo-headline .big.way{font-size:clamp(1.15rem,1.75vw,1.45rem);line-height:1.25;white-space:normal}
+.mo-headline>.why{grid-column:1/-1;border-left:3px solid #e8b04a;border-top:1px solid var(--mo-border);
+  padding:11px 22px 12px 19px;font-size:14.5px;color:var(--mo-ink);background:rgba(232,176,74,.11)}
+.mo-headline>.why b{color:#f0bd5e;font-weight:600}
 /* a secondary remark in one line, not a banner */
 .mo-note{margin:-4px 0 16px;padding:6px 12px;border-left:3px solid #e8b04a;font-size:13px;line-height:1.45;
   color:var(--mo-ink2)}

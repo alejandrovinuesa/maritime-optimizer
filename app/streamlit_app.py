@@ -272,7 +272,7 @@ def figure(text: str) -> str:
 
 
 def headline_html(title: str, best, other_name: str | None, other, color: str, tmax: float,
-                  via: str = "", why: str = "") -> str:
+                  via: str = "", why: str = "", legs: int = 1) -> str:
     """The result in three cells: which route, what it costs or saves, how long it takes.
 
     The distance is on the header track, so the route cell says how the voyage goes instead.
@@ -284,9 +284,8 @@ def headline_html(title: str, best, other_name: str | None, other, color: str, t
     # A phone has no room for the distance on the header track: it leads this line there instead.
     nm = f'<span class="nm">{num(best.total_distance_nm)} NM · </span>'
     if other is None:
-        legs = via.count(" · ") + 2 if via else 1
-        route = (f'<div class="big">{f"{legs} legs" if via else "Direct"}</div>'
-                 f'<div class="meta">{nm}{esc(via) or "No port or canal on the way"}</div>')
+        route = (f'<div class="big way">{esc(via[0].upper() + via[1:]) if via else "Direct"}</div>'
+                 f'<div class="meta">{nm}{f"{legs} legs" if via else "No port or canal on the way"}</div>')
         cost = (f'<div class="big">{eur(best.total_cost_eur)}</div>'
                 f'<div class="meta">{mean_speed(best):.1f} kn mean speed</div>')
         slack = (f'<span class="late">{num(-spare)} h over the deadline</span>' if spare < -0.5
@@ -310,7 +309,8 @@ def headline_html(title: str, best, other_name: str | None, other, color: str, t
             f'<div><div class="lead">{esc(title)}</div>{route}</div>'
             f'<div><div class="lead">Cost</div>{cost}</div>'
             f'<div><div class="lead">Time</div>{time}</div>'
-            + (f'<div class="why">{esc(why)}</div>' if why else "") + "</div>")
+            + (f'<div class="why"><b>{esc(why.partition(": ")[0])}.</b> '
+               f'{esc(why.partition(": ")[2])}</div>' if why else "") + "</div>")
 
 
 graph = get_graph()
@@ -450,7 +450,7 @@ why = ""
 if corridors and len(routes) == 1:
     lost = next(n for k, n in names.items() if k not in found).removeprefix("Via ")
     why = (f"{lost[0].upper()}{lost[1:]} is not feasible within the {tmax / 24:g}-day deadline: "
-           f"only {next(iter(routes)).removeprefix('Via ')} makes it.")
+           f"Only {next(iter(routes)).removeprefix('Via ')} makes it.")
 late = False
 if not routes:
     with st.spinner("Looking for the fastest voyage…"):
@@ -485,9 +485,12 @@ route_slots = {n: ROUTE_SLOTS["optimal" if n == best_name else "alternative"] fo
 hero(f"{num(best.total_distance_nm)} NM")
 if "raised" in st.session_state:
     st.info(st.session_state.pop("raised"), icon=":material/speed:")
-via = " · ".join(graph.ports[c].name for c in best.route_ports[1:-1] if not is_waypoint_node(c))
+stops = [c for c in best.route_ports[1:-1] if not is_waypoint_node(c)]
+# A long route is named by its canals and straits alone, so the headline stays within two lines.
+named = [c for c in stops if is_canal_node(c)] if len(stops) > 3 else stops
+via = " · ".join(graph.ports[c].name for c in named or stops)
 st.markdown(headline_html(best_name, best, other_name, other, OPT_COLOR, tmax,
-                          f"via {via}" if via else "", why), unsafe_allow_html=True)
+                          f"via {via}" if via else "", why, len(stops) + 1), unsafe_allow_html=True)
 
 # A new voyage invalidates the previous AI report (the chat keeps its history).
 voyage_id = hashlib.sha256(json.dumps(
